@@ -170,6 +170,9 @@
       },
       "target_mixer_temp": {
         "name": "Temperatura zadana mieszacza"
+      },
+      "water_heater_hysteresis": {
+        "name": "Histereza CWU"
       }
     },
     "select": {

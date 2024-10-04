@@ -170,6 +170,9 @@
       },
       "target_mixer_temp": {
         "name": "Target mixer temperature"
+      },
+      "water_heater_hysteresis": {
+        "name": "Water heater hysteresis"
       }
     },
     "select": {
