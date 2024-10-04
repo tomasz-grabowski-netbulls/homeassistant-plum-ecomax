@@ -88,6 +88,41 @@ NUMBER_TYPES: tuple[EcomaxNumberEntityDescription, ...] = (
         native_unit_of_measurement=CALORIFIC_KWH_KG,
         product_types={ProductType.ECOMAX_P},
     ),
+    EcomaxNumberEntityDescription(
+        key="heating_hysteresis",
+        translation_key="heating_hysteresis",
+        native_step=1,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        product_types={ProductType.ECOMAX_P},
+    ),
+    EcomaxNumberEntityDescription(
+        key="h1_hysteresis",
+        translation_key="h1_hysteresis",
+        native_step=1,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        product_types={ProductType.ECOMAX_P},
+    ),
+    EcomaxNumberEntityDescription(
+        key="h2_hysteresis",
+        translation_key="h2_hysteresis",
+        native_step=1,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        product_types={ProductType.ECOMAX_P},
+    ),
+    EcomaxNumberEntityDescription(
+        key="heating_pump_enable_temp",
+        translation_key="heating_pump_enable_temp",
+        native_step=1,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        product_types={ProductType.ECOMAX_P},
+    ),
+    EcomaxNumberEntityDescription(
+        key="water_heater_hysteresis",
+        translation_key="water_heater_hysteresis",
+        native_step=1,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        product_types={ProductType.ECOMAX_P},
+    ),
 )
 
 
