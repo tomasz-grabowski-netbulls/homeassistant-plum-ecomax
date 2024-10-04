@@ -1,4 +1,5 @@
 """Diagnostics support for Plum ecoMAX."""
+
 from __future__ import annotations
 
 from copy import copy
@@ -10,12 +11,12 @@ from pyplumio import __version__ as pyplumio_version
 from pyplumio.devices import Device
 from pyplumio.structures.product_info import ProductInfo
 
-from .const import ATTR_PASSWORD, ATTR_PRODUCT, CONF_HOST, CONF_UID, DOMAIN
+from .const import ATTR_PASSWORD, ATTR_PRODUCT, CONF_HOST, CONF_UID
 
 REDACTED: Final = "**REDACTED**"
 
 
-def _value_as_dict(value):
+def _value_as_dict(value: Any) -> Any:
     """Return value as a dictionary."""
     if isinstance(value, Device):
         return dict(value.data)
@@ -71,7 +72,8 @@ async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
-    device: Device = hass.data[DOMAIN][entry.entry_id].device
+    data = entry.runtime_data
+    device: Device = data.connection.device
     return {
         "entry": {
             "title": entry.title,

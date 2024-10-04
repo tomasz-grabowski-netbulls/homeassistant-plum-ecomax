@@ -8,20 +8,21 @@ from homeassistant.components.switch import (
     SERVICE_TURN_ON,
 )
 from homeassistant.const import ATTR_ENTITY_ID, ATTR_FRIENDLY_NAME, STATE_OFF, STATE_ON
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, State
 from homeassistant.helpers import entity_registry as er
 from pyplumio.helpers.parameter import ParameterValues
 from pyplumio.structures.ecomax_parameters import (
     ATTR_ECOMAX_CONTROL,
-    EcomaxBinaryParameter,
-    EcomaxBinaryParameterDescription,
-    EcomaxParameter,
-    EcomaxParameterDescription,
+    EcomaxNumber,
+    EcomaxNumberDescription,
+    EcomaxSwitch,
+    EcomaxSwitchDescription,
 )
 from pyplumio.structures.mixer_parameters import (
-    MixerBinaryParameter,
-    MixerParameter,
-    MixerParameterDescription,
+    MixerNumber,
+    MixerNumberDescription,
+    MixerSwitch,
+    MixerSwitchDescription,
 )
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -101,25 +102,28 @@ async def test_ecomax_control_switch(
 
     # Get initial value.
     state = hass.states.get(controller_switch_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
     assert state.attributes[ATTR_FRIENDLY_NAME] == "ecoMAX Controller switch"
 
     # Dispatch new value.
     await connection.device.dispatch(
         ATTR_ECOMAX_CONTROL,
-        EcomaxBinaryParameter(
+        EcomaxSwitch(
             device=connection.device,
             values=ParameterValues(value=1, min_value=0, max_value=1),
-            description=EcomaxParameterDescription(ATTR_ECOMAX_CONTROL),
+            description=EcomaxNumberDescription(ATTR_ECOMAX_CONTROL),
         ),
     )
     state = hass.states.get(controller_switch_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_ON
 
     # Turn off.
     with patch("pyplumio.devices.Device.set_nowait") as mock_set_nowait:
         state = await async_turn_off(hass, controller_switch_entity_id)
 
+    assert isinstance(state, State)
     mock_set_nowait.assert_called_once_with(ATTR_ECOMAX_CONTROL, STATE_OFF)
     assert state.state == STATE_OFF
 
@@ -127,6 +131,7 @@ async def test_ecomax_control_switch(
     with patch("pyplumio.devices.Device.set_nowait") as mock_set_nowait:
         state = await async_turn_on(hass, controller_switch_entity_id)
 
+    assert isinstance(state, State)
     mock_set_nowait.assert_called_once_with(ATTR_ECOMAX_CONTROL, STATE_ON)
     assert state.state == STATE_ON
 
@@ -155,6 +160,7 @@ async def test_water_heater_disinfection_switch(
 
     # Get initial value.
     state = hass.states.get(water_heater_disinfection_switch_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
     assert (
         state.attributes[ATTR_FRIENDLY_NAME]
@@ -164,15 +170,14 @@ async def test_water_heater_disinfection_switch(
     # Dispatch new value.
     await connection.device.dispatch(
         water_heater_disinfection_switch_key,
-        EcomaxBinaryParameter(
+        EcomaxSwitch(
             device=connection.device,
             values=ParameterValues(value=1, min_value=0, max_value=1),
-            description=EcomaxBinaryParameterDescription(
-                water_heater_disinfection_switch_key
-            ),
+            description=EcomaxSwitchDescription(water_heater_disinfection_switch_key),
         ),
     )
     state = hass.states.get(water_heater_disinfection_switch_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_ON
 
     # Turn off.
@@ -182,6 +187,7 @@ async def test_water_heater_disinfection_switch(
     mock_set_nowait.assert_called_once_with(
         water_heater_disinfection_switch_key, STATE_OFF
     )
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
 
     # Turn on.
@@ -191,6 +197,7 @@ async def test_water_heater_disinfection_switch(
     mock_set_nowait.assert_called_once_with(
         water_heater_disinfection_switch_key, STATE_ON
     )
+    assert isinstance(state, State)
     assert state.state == STATE_ON
 
 
@@ -216,19 +223,21 @@ async def test_water_heater_pump_switch(
 
     # Get initial value.
     state = hass.states.get(water_heater_pump_switch_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
     assert state.attributes[ATTR_FRIENDLY_NAME] == "ecoMAX Water heater pump switch"
 
     # Dispatch new value.
     await connection.device.dispatch(
         water_heater_pump_switch_key,
-        EcomaxParameter(
+        EcomaxNumber(
             device=connection.device,
             values=ParameterValues(value=2, min_value=0, max_value=2),
-            description=EcomaxParameterDescription(water_heater_pump_switch_key),
+            description=EcomaxNumberDescription(water_heater_pump_switch_key),
         ),
     )
     state = hass.states.get(water_heater_pump_switch_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_ON
 
     # Turn off.
@@ -236,6 +245,7 @@ async def test_water_heater_pump_switch(
         state = await async_turn_off(hass, water_heater_pump_switch_entity_id)
 
     mock_set_nowait.assert_called_once_with(water_heater_pump_switch_key, 0)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
 
     # Turn on.
@@ -243,6 +253,7 @@ async def test_water_heater_pump_switch(
         state = await async_turn_on(hass, water_heater_pump_switch_entity_id)
 
     mock_set_nowait.assert_called_once_with(water_heater_pump_switch_key, 2)
+    assert isinstance(state, State)
     assert state.state == STATE_ON
 
 
@@ -268,19 +279,21 @@ async def test_weather_control_switch(
 
     # Get initial value.
     state = hass.states.get(weather_control_switch_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
     assert state.attributes[ATTR_FRIENDLY_NAME] == "ecoMAX Weather control switch"
 
     # Dispatch new value.
     await connection.device.dispatch(
         weather_control_switch_key,
-        EcomaxBinaryParameter(
+        EcomaxSwitch(
             device=connection.device,
             values=ParameterValues(value=1, min_value=0, max_value=1),
-            description=EcomaxParameterDescription(weather_control_switch_key),
+            description=EcomaxNumberDescription(weather_control_switch_key),
         ),
     )
     state = hass.states.get(weather_control_switch_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_ON
 
     # Turn off.
@@ -288,6 +301,7 @@ async def test_weather_control_switch(
         state = await async_turn_off(hass, weather_control_switch_entity_id)
 
     mock_set_nowait.assert_called_once_with(weather_control_switch_key, STATE_OFF)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
 
     # Turn on.
@@ -295,6 +309,7 @@ async def test_weather_control_switch(
         state = await async_turn_on(hass, weather_control_switch_entity_id)
 
     mock_set_nowait.assert_called_once_with(weather_control_switch_key, STATE_ON)
+    assert isinstance(state, State)
     assert state.state == STATE_ON
 
 
@@ -320,19 +335,21 @@ async def test_fuzzy_logic_switch(
 
     # Get initial value.
     state = hass.states.get(fuzzy_logic_switch_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
     assert state.attributes[ATTR_FRIENDLY_NAME] == "ecoMAX Fuzzy logic switch"
 
     # Dispatch new value.
     await connection.device.dispatch(
         fuzzy_logic_switch_key,
-        EcomaxBinaryParameter(
+        EcomaxSwitch(
             device=connection.device,
             values=ParameterValues(value=1, min_value=0, max_value=1),
-            description=EcomaxParameterDescription(fuzzy_logic_switch_key),
+            description=EcomaxNumberDescription(fuzzy_logic_switch_key),
         ),
     )
     state = hass.states.get(fuzzy_logic_switch_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_ON
 
     # Turn off.
@@ -340,6 +357,7 @@ async def test_fuzzy_logic_switch(
         state = await async_turn_off(hass, fuzzy_logic_switch_entity_id)
 
     mock_set_nowait.assert_called_once_with(fuzzy_logic_switch_key, STATE_OFF)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
 
     # Turn on.
@@ -347,6 +365,7 @@ async def test_fuzzy_logic_switch(
         state = await async_turn_on(hass, fuzzy_logic_switch_entity_id)
 
     mock_set_nowait.assert_called_once_with(fuzzy_logic_switch_key, STATE_ON)
+    assert isinstance(state, State)
     assert state.state == STATE_ON
 
 
@@ -372,19 +391,21 @@ async def test_heating_schedule_switch(
 
     # Get initial value.
     state = hass.states.get(heating_schedule_switch_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
     assert state.attributes[ATTR_FRIENDLY_NAME] == "ecoMAX Heating schedule switch"
 
     # Dispatch new value.
     await connection.device.dispatch(
         heating_schedule_switch_key,
-        EcomaxBinaryParameter(
+        EcomaxSwitch(
             device=connection.device,
             values=ParameterValues(value=1, min_value=0, max_value=1),
-            description=EcomaxParameterDescription(heating_schedule_switch_key),
+            description=EcomaxNumberDescription(heating_schedule_switch_key),
         ),
     )
     state = hass.states.get(heating_schedule_switch_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_ON
 
     # Turn off.
@@ -392,6 +413,7 @@ async def test_heating_schedule_switch(
         state = await async_turn_off(hass, heating_schedule_switch_entity_id)
 
     mock_set_nowait.assert_called_once_with(heating_schedule_switch_key, STATE_OFF)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
 
     # Turn on.
@@ -399,6 +421,7 @@ async def test_heating_schedule_switch(
         state = await async_turn_on(hass, heating_schedule_switch_entity_id)
 
     mock_set_nowait.assert_called_once_with(heating_schedule_switch_key, STATE_ON)
+    assert isinstance(state, State)
     assert state.state == STATE_ON
 
 
@@ -426,19 +449,21 @@ async def test_water_heater_schedule_switch(
 
     # Get initial value.
     state = hass.states.get(water_heater_schedule_switch_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
     assert state.attributes[ATTR_FRIENDLY_NAME] == "ecoMAX Water heater schedule switch"
 
     # Dispatch new value.
     await connection.device.dispatch(
         water_heater_schedule_switch_key,
-        EcomaxBinaryParameter(
+        EcomaxSwitch(
             device=connection.device,
             values=ParameterValues(value=1, min_value=0, max_value=1),
-            description=EcomaxParameterDescription(water_heater_schedule_switch_key),
+            description=EcomaxNumberDescription(water_heater_schedule_switch_key),
         ),
     )
     state = hass.states.get(water_heater_schedule_switch_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_ON
 
     # Turn off.
@@ -446,6 +471,7 @@ async def test_water_heater_schedule_switch(
         state = await async_turn_off(hass, water_heater_schedule_switch_entity_id)
 
     mock_set_nowait.assert_called_once_with(water_heater_schedule_switch_key, STATE_OFF)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
 
     # Turn on.
@@ -453,6 +479,7 @@ async def test_water_heater_schedule_switch(
         state = await async_turn_on(hass, water_heater_schedule_switch_entity_id)
 
     mock_set_nowait.assert_called_once_with(water_heater_schedule_switch_key, STATE_ON)
+    assert isinstance(state, State)
     assert state.state == STATE_ON
 
 
@@ -478,6 +505,7 @@ async def test_mixer_enable_in_summer_mode_switch(
 
     # Get initial value.
     state = hass.states.get(enable_in_summer_mode_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
     assert (
         state.attributes[ATTR_FRIENDLY_NAME] == "ecoMAX Mixer 1 Enable in summer mode"
@@ -486,14 +514,15 @@ async def test_mixer_enable_in_summer_mode_switch(
     # Dispatch new value.
     await connection.device.mixers[0].dispatch(
         enable_in_summer_mode_key,
-        MixerBinaryParameter(
+        MixerSwitch(
             device=connection.device,
             values=ParameterValues(value=1, min_value=0, max_value=1),
-            description=MixerParameterDescription(enable_in_summer_mode_key),
+            description=MixerSwitchDescription(enable_in_summer_mode_key),
         ),
     )
 
     state = hass.states.get(enable_in_summer_mode_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_ON
 
     # Turn off.
@@ -501,6 +530,7 @@ async def test_mixer_enable_in_summer_mode_switch(
         state = await async_turn_off(hass, enable_in_summer_mode_entity_id)
 
     mock_set_nowait.assert_called_once_with(enable_in_summer_mode_key, STATE_OFF)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
 
     # Turn on.
@@ -508,6 +538,7 @@ async def test_mixer_enable_in_summer_mode_switch(
         state = await async_turn_on(hass, enable_in_summer_mode_entity_id)
 
     mock_set_nowait.assert_called_once_with(enable_in_summer_mode_key, STATE_ON)
+    assert isinstance(state, State)
     assert state.state == STATE_ON
 
 
@@ -533,6 +564,7 @@ async def test_circuit_enable_in_summer_mode_switch(
 
     # Get initial value.
     state = hass.states.get(enable_in_summer_mode_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
     assert (
         state.attributes[ATTR_FRIENDLY_NAME] == "ecoMAX Circuit 1 Enable in summer mode"
@@ -541,14 +573,15 @@ async def test_circuit_enable_in_summer_mode_switch(
     # Dispatch new value.
     await connection.device.mixers[0].dispatch(
         enable_in_summer_mode_key,
-        MixerBinaryParameter(
+        MixerSwitch(
             device=connection.device,
             values=ParameterValues(value=1, min_value=0, max_value=1),
-            description=MixerParameterDescription(enable_in_summer_mode_key),
+            description=MixerSwitchDescription(enable_in_summer_mode_key),
         ),
     )
 
     state = hass.states.get(enable_in_summer_mode_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_ON
 
     # Turn off.
@@ -556,6 +589,7 @@ async def test_circuit_enable_in_summer_mode_switch(
         state = await async_turn_off(hass, enable_in_summer_mode_entity_id)
 
     mock_set_nowait.assert_called_once_with(enable_in_summer_mode_key, STATE_OFF)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
 
     # Turn on.
@@ -563,6 +597,7 @@ async def test_circuit_enable_in_summer_mode_switch(
         state = await async_turn_on(hass, enable_in_summer_mode_entity_id)
 
     mock_set_nowait.assert_called_once_with(enable_in_summer_mode_key, STATE_ON)
+    assert isinstance(state, State)
     assert state.state == STATE_ON
 
 
@@ -590,6 +625,7 @@ async def test_mixer_weather_control_switch(
 
     # Get initial value.
     state = hass.states.get(mixer_weather_control_switch_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
     assert (
         state.attributes[ATTR_FRIENDLY_NAME] == "ecoMAX Mixer 1 Weather control switch"
@@ -598,13 +634,14 @@ async def test_mixer_weather_control_switch(
     # Dispatch new value.
     await connection.device.mixers[0].dispatch(
         mixer_weather_control_switch_key,
-        MixerBinaryParameter(
+        MixerSwitch(
             device=connection.device,
             values=ParameterValues(value=1, min_value=0, max_value=1),
-            description=MixerParameterDescription(mixer_weather_control_switch_key),
+            description=MixerSwitchDescription(mixer_weather_control_switch_key),
         ),
     )
     state = hass.states.get(mixer_weather_control_switch_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_ON
 
     # Turn off.
@@ -612,6 +649,7 @@ async def test_mixer_weather_control_switch(
         state = await async_turn_off(hass, mixer_weather_control_switch_entity_id)
 
     mock_set_nowait.assert_called_once_with(mixer_weather_control_switch_key, STATE_OFF)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
 
     # Turn on.
@@ -619,6 +657,7 @@ async def test_mixer_weather_control_switch(
         state = await async_turn_on(hass, mixer_weather_control_switch_entity_id)
 
     mock_set_nowait.assert_called_once_with(mixer_weather_control_switch_key, STATE_ON)
+    assert isinstance(state, State)
     assert state.state == STATE_ON
 
 
@@ -646,6 +685,7 @@ async def test_mixer_disable_pump_on_thermostat_switch(
 
     # Get initial value.
     state = hass.states.get(disable_pump_on_thermostat_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
     assert (
         state.attributes[ATTR_FRIENDLY_NAME]
@@ -655,14 +695,15 @@ async def test_mixer_disable_pump_on_thermostat_switch(
     # Dispatch new value.
     await connection.device.mixers[0].dispatch(
         disable_pump_on_thermostat_key,
-        MixerBinaryParameter(
+        MixerSwitch(
             device=connection.device,
             values=ParameterValues(value=1, min_value=0, max_value=1),
-            description=MixerParameterDescription(disable_pump_on_thermostat_key),
+            description=MixerSwitchDescription(disable_pump_on_thermostat_key),
         ),
     )
 
     state = hass.states.get(disable_pump_on_thermostat_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_ON
 
     # Turn off.
@@ -670,6 +711,7 @@ async def test_mixer_disable_pump_on_thermostat_switch(
         state = await async_turn_off(hass, disable_pump_on_thermostat_entity_id)
 
     mock_set_nowait.assert_called_once_with(disable_pump_on_thermostat_key, STATE_OFF)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
 
     # Turn on.
@@ -677,6 +719,7 @@ async def test_mixer_disable_pump_on_thermostat_switch(
         state = await async_turn_on(hass, disable_pump_on_thermostat_entity_id)
 
     mock_set_nowait.assert_called_once_with(disable_pump_on_thermostat_key, STATE_ON)
+    assert isinstance(state, State)
     assert state.state == STATE_ON
 
 
@@ -702,20 +745,22 @@ async def test_circuit_enable_circuit_switch(
 
     # Get initial value.
     state = hass.states.get(enable_circuit_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
     assert state.attributes[ATTR_FRIENDLY_NAME] == "ecoMAX Circuit 1 Enable circuit"
 
     # Dispatch new value.
     await connection.device.mixers[0].dispatch(
         enable_circuit_key,
-        MixerParameter(
+        MixerNumber(
             device=connection.device,
             values=ParameterValues(value=1, min_value=0, max_value=1),
-            description=MixerParameterDescription(enable_circuit_key),
+            description=MixerNumberDescription(enable_circuit_key),
         ),
     )
 
     state = hass.states.get(enable_circuit_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_ON
 
     # Turn off.
@@ -723,6 +768,7 @@ async def test_circuit_enable_circuit_switch(
         state = await async_turn_off(hass, enable_circuit_entity_id)
 
     mock_set_nowait.assert_called_once_with(enable_circuit_key, 0)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
 
     # Turn on.
@@ -730,6 +776,7 @@ async def test_circuit_enable_circuit_switch(
         state = await async_turn_on(hass, enable_circuit_entity_id)
 
     mock_set_nowait.assert_called_once_with(enable_circuit_key, 1)
+    assert isinstance(state, State)
     assert state.state == STATE_ON
 
 

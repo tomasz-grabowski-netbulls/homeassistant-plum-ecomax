@@ -1,7 +1,7 @@
 """Contains Plum ecoMAX services."""
+
 from __future__ import annotations
 
-import asyncio
 import datetime as dt
 import logging
 from typing import Any, Final
@@ -22,22 +22,23 @@ from homeassistant.helpers.service import (
     SelectedEntities,
     async_extract_referenced_entity_ids,
 )
+from homeassistant.util.json import JsonObjectType
 from pyplumio.const import UnitOfMeasurement
 from pyplumio.devices import Device
-from pyplumio.helpers.parameter import Parameter
+from pyplumio.helpers.parameter import Number, Parameter
 from pyplumio.helpers.schedule import (
-    START_OF_DAY,
     STATE_DAY,
     STATE_NIGHT,
     TIME_FORMAT,
+    Schedule,
     ScheduleDay,
+    start_of_day_dt,
 )
 import voluptuous as vol
 
 from .connection import DEFAULT_TIMEOUT, EcomaxConnection
 from .const import (
     ATTR_END,
-    ATTR_MIXERS,
     ATTR_PRESET,
     ATTR_PRODUCT,
     ATTR_SCHEDULES,
@@ -47,6 +48,7 @@ from .const import (
     ATTR_WEEKDAYS,
     DOMAIN,
     WEEKDAYS,
+    DeviceType,
 )
 
 SCHEDULES: Final = (
@@ -93,8 +95,6 @@ SERVICE_SET_SCHEDULE_SCHEMA = vol.Schema(
     }
 )
 
-START_OF_DAY_DT = dt.datetime.strptime(START_OF_DAY, TIME_FORMAT)
-
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -113,13 +113,13 @@ def async_extract_target_device(
         )
 
     identifier = list(device.identifiers)[0][1]
-    if "-mixer-" in identifier:
-        index = int(identifier.split("-", 3).pop())
-        mixers = connection.device.data.get(ATTR_MIXERS, {})
-        try:
-            return mixers[index]
-        except KeyError:
-            pass
+    for device_type in (DeviceType.MIXER, DeviceType.THERMOSTAT):
+        if f"-{device_type}-" in identifier:
+            index = int(identifier.split("-", 3).pop())
+            sub_devices: dict[int, Device] = connection.device.get_nowait(
+                f"{device_type}s", {}
+            )
+            return sub_devices.get(index, connection.device)
 
     return connection.device
 
@@ -135,7 +135,7 @@ def async_extract_referenced_devices(
     referenced = selected.referenced | selected.indirectly_referenced
     for entity_id in referenced:
         entity = entity_registry.async_get(entity_id)
-        if entity.device_id not in extracted:
+        if entity and entity.device_id and entity.device_id not in extracted:
             devices.add(async_extract_target_device(entity.device_id, hass, connection))
             extracted.add(entity.device_id)
 
@@ -148,7 +148,7 @@ async def async_get_device_parameter(
     """Get device parameter."""
     try:
         parameter = await device.get(name, timeout=DEFAULT_TIMEOUT)
-    except asyncio.TimeoutError as e:
+    except TimeoutError as e:
         raise HomeAssistantError(
             translation_domain=DOMAIN,
             translation_key="get_parameter_timeout",
@@ -165,15 +165,21 @@ async def async_get_device_parameter(
     ecomax = device.parent if hasattr(device, "parent") else device
     product = ecomax.get_nowait(ATTR_PRODUCT, default=None)
     device_uid = product.uid if product is not None else "unknown"
+    if isinstance(parameter, Number):
+        unit_of_measurement = (
+            parameter.unit_of_measurement.value
+            if isinstance(parameter.unit_of_measurement, UnitOfMeasurement)
+            else parameter.unit_of_measurement
+        )
+    else:
+        unit_of_measurement = None
 
     return {
         "name": name,
         "value": parameter.value,
         "min_value": parameter.min_value,
         "max_value": parameter.max_value,
-        "unit_of_measurement": parameter.unit_of_measurement.value
-        if isinstance(parameter.unit_of_measurement, UnitOfMeasurement)
-        else parameter.unit_of_measurement,
+        "unit_of_measurement": unit_of_measurement,
         "device_type": device.__class__.__name__.lower(),
         "device_uid": device_uid,
         "device_index": device.index + 1 if hasattr(device, "index") else 0,
@@ -186,7 +192,9 @@ def async_setup_get_parameter_service(
 ) -> None:
     """Set up service to get a device parameter."""
 
-    async def async_get_parameter_service(service_call: ServiceCall) -> ServiceResponse:
+    async def _async_get_parameter_service(
+        service_call: ServiceCall,
+    ) -> ServiceResponse:
         """Service to get a device parameter."""
         name = service_call.data[ATTR_NAME]
         selected = async_extract_referenced_entity_ids(hass, service_call)
@@ -205,7 +213,7 @@ def async_setup_get_parameter_service(
     hass.services.async_register(
         DOMAIN,
         SERVICE_GET_PARAMETER,
-        async_get_parameter_service,
+        _async_get_parameter_service,
         schema=SERVICE_GET_PARAMETER_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
@@ -227,9 +235,9 @@ async def async_set_device_parameter(device: Device, name: str, value: float) ->
             str(e),
             translation_domain=DOMAIN,
             translation_key="invalid_parameter_value",
-            translation_placeholders={"parameter": name, "value": value},
+            translation_placeholders={"parameter": name, "value": str(value)},
         ) from e
-    except asyncio.TimeoutError as e:
+    except TimeoutError as e:
         raise HomeAssistantError(
             str(e),
             translation_domain=DOMAIN,
@@ -244,7 +252,7 @@ def async_setup_set_parameter_service(
 ) -> None:
     """Set up the service to set a device parameter."""
 
-    async def async_set_parameter_service(service_call: ServiceCall) -> None:
+    async def _async_set_parameter_service(service_call: ServiceCall) -> None:
         """Service to set a device parameter."""
         name = service_call.data[ATTR_NAME]
         value = service_call.data[ATTR_VALUE]
@@ -266,15 +274,17 @@ def async_setup_set_parameter_service(
     hass.services.async_register(
         DOMAIN,
         SERVICE_SET_PARAMETER,
-        async_set_parameter_service,
+        _async_set_parameter_service,
         schema=SERVICE_SET_PARAMETER_SCHEMA,
     )
 
 
-def async_schedule_day_to_dict(schedule_day: ScheduleDay):
+def async_get_schedule_day_data(
+    schedule_day: ScheduleDay,
+) -> JsonObjectType:
     """Format the schedule day as a dictionary."""
     return {
-        (START_OF_DAY_DT + dt.timedelta(minutes=30 * index)).strftime(TIME_FORMAT): (
+        (start_of_day_dt + dt.timedelta(minutes=30 * index)).strftime(TIME_FORMAT): (
             STATE_DAY if value else STATE_NIGHT
         )
         for index, value in enumerate(schedule_day.intervals)
@@ -287,7 +297,7 @@ def async_setup_get_schedule_service(
 ) -> None:
     """Set up the service to get a schedule."""
 
-    async def async_get_schedule_service(service_call: ServiceCall) -> ServiceResponse:
+    async def _async_get_schedule_service(service_call: ServiceCall) -> ServiceResponse:
         """Service to get a schedule."""
         schedule_type = service_call.data[ATTR_TYPE]
         weekdays = service_call.data[ATTR_WEEKDAYS]
@@ -303,15 +313,15 @@ def async_setup_get_schedule_service(
         schedule = schedules[schedule_type]
         return {
             "schedule": {
-                weekday: async_schedule_day_to_dict(getattr(schedule, weekday))
+                weekday: async_get_schedule_day_data(getattr(schedule, weekday))
                 for weekday in weekdays
-            }
+            },
         }
 
     hass.services.async_register(
         DOMAIN,
         SERVICE_GET_SCHEDULE,
-        async_get_schedule_service,
+        _async_get_schedule_service,
         schema=SERVICE_GET_SCHEDULE_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
@@ -323,7 +333,7 @@ def async_setup_set_schedule_service(
 ) -> None:
     """Set up the service to set a schedule."""
 
-    async def async_set_schedule_service(service_call: ServiceCall) -> None:
+    async def _async_set_schedule_service(service_call: ServiceCall) -> None:
         """Service to set a schedule."""
         schedule_type = service_call.data[ATTR_TYPE]
         weekdays = service_call.data[ATTR_WEEKDAYS]
@@ -339,7 +349,7 @@ def async_setup_set_schedule_service(
                 translation_placeholders={"schedule": schedule_type},
             )
 
-        schedule = schedules[schedule_type]
+        schedule: Schedule = schedules[schedule_type]
         for weekday in weekdays:
             schedule_day: ScheduleDay = getattr(schedule, weekday)
             try:
@@ -356,12 +366,12 @@ def async_setup_set_schedule_service(
                     },
                 ) from e
 
-        schedule.commit()
+        await schedule.commit()
 
     hass.services.async_register(
         DOMAIN,
         SERVICE_SET_SCHEDULE,
-        async_set_schedule_service,
+        _async_set_schedule_service,
         schema=SERVICE_SET_SCHEDULE_SCHEMA,
     )
 

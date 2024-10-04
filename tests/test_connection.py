@@ -1,6 +1,5 @@
 """Test Plum ecoMAX connection."""
 
-import asyncio
 import logging
 from typing import Any, Final
 from unittest.mock import AsyncMock, Mock, patch
@@ -9,7 +8,6 @@ from homeassistant.components.network.const import IPV4_BROADCAST_ADDR
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers.entity import DeviceInfo
 from pyplumio.connection import Connection, SerialConnection, TcpConnection
 from pyplumio.const import FrameType
 from pyplumio.devices.ecomax import EcoMAX
@@ -17,7 +15,6 @@ from pyplumio.structures.mixer_parameters import ATTR_MIXER_PARAMETERS
 from pyplumio.structures.thermostat_parameters import ATTR_THERMOSTAT_PARAMETERS
 import pytest
 
-from custom_components.plum_ecomax.climate import ATTR_THERMOSTATS
 from custom_components.plum_ecomax.connection import (
     DEFAULT_TIMEOUT,
     EcomaxConnection,
@@ -27,6 +24,7 @@ from custom_components.plum_ecomax.connection import (
 from custom_components.plum_ecomax.const import (
     ATTR_MIXERS,
     ATTR_REGDATA,
+    ATTR_THERMOSTATS,
     ATTR_WATER_HEATER,
     CONF_HOST,
     CONF_MODEL,
@@ -37,9 +35,7 @@ from custom_components.plum_ecomax.const import (
     CONF_UID,
     CONNECTION_TYPE_SERIAL,
     CONNECTION_TYPE_TCP,
-    DOMAIN,
-    ECOMAX,
-    MANUFACTURER,
+    DeviceType,
 )
 
 SOURCE_IP: Final = "1.1.1.1"
@@ -97,16 +93,14 @@ async def test_async_get_sub_devices(ecomax_p: EcoMAX, caplog) -> None:
 async def test_async_setup(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
-    tcp_config_data: dict[str, str],
+    tcp_config_data: dict[str, Any],
 ) -> None:
     """Test connection setup."""
     mock_ecomax = Mock(spec=EcoMAX)
-    mock_ecomax.wait_for = AsyncMock(
-        side_effect=(True, True, True, asyncio.TimeoutError)
-    )
+    mock_ecomax.wait_for = AsyncMock(side_effect=(True, True, True, TimeoutError))
     mock_connection = Mock(spec=TcpConnection)
     mock_connection.configure_mock(host=tcp_config_data.get(CONF_HOST))
-    mock_connection.get = AsyncMock(side_effect=(mock_ecomax, asyncio.TimeoutError))
+    mock_connection.get = AsyncMock(side_effect=(mock_ecomax, TimeoutError))
     connection = EcomaxConnection(hass, config_entry, mock_connection)
 
     # Test config not ready when device property is not set.
@@ -117,7 +111,9 @@ async def test_async_setup(
     assert exc_info.value.translation_placeholders == {"device": "ecoMAX 850P2-C"}
     await connection.async_setup()
     mock_connection.connect.assert_awaited_once()
-    mock_connection.get.assert_awaited_once_with(ECOMAX, timeout=DEFAULT_TIMEOUT)
+    mock_connection.get.assert_awaited_once_with(
+        DeviceType.ECOMAX, timeout=DEFAULT_TIMEOUT
+    )
 
     # Check connection class properties for tcp connection.
     assert not hasattr(connection, "nonexistent")
@@ -127,20 +123,11 @@ async def test_async_setup(
     assert connection.software == tcp_config_data.get(CONF_SOFTWARE)
     assert connection.name == config_entry.title
     assert connection.device == mock_ecomax
-    assert connection.connection == mock_connection
     assert connection.product_type == tcp_config_data.get(CONF_PRODUCT_TYPE)
     assert connection.product_id == tcp_config_data.get(CONF_PRODUCT_ID)
-    assert connection.device_info == DeviceInfo(
-        name=connection.name,
-        identifiers={(DOMAIN, connection.uid)},
-        manufacturer=MANUFACTURER,
-        model=f"{connection.model}",
-        sw_version=connection.software,
-        configuration_url=f"http://{tcp_config_data.get(CONF_HOST)}",
-    )
 
     # Check with device timeout.
-    with pytest.raises(asyncio.TimeoutError):
+    with pytest.raises(TimeoutError):
         await connection.async_setup()
 
 
@@ -212,15 +199,19 @@ async def test_async_update_sub_device(
 ) -> None:
     """Test function to update connected sub-devices."""
     connection = EcomaxConnection(hass, config_entry, AsyncMock(spec=TcpConnection))
-    with patch(
-        "homeassistant.config_entries.ConfigEntries.async_reload"
-    ) as mock_async_reload, patch(
-        "custom_components.plum_ecomax.connection.EcomaxConnection.device",
-        return_value=ecomax_p,
-    ) as mock_device, patch(
-        "custom_components.plum_ecomax.connection.async_get_sub_devices",
-        return_value=[ATTR_MIXERS],
-    ) as mock_async_get_sub_devices:
+    with (
+        patch(
+            "homeassistant.config_entries.ConfigEntries.async_reload"
+        ) as mock_async_reload,
+        patch(
+            "custom_components.plum_ecomax.connection.EcomaxConnection.device",
+            return_value=ecomax_p,
+        ) as mock_device,
+        patch(
+            "custom_components.plum_ecomax.connection.async_get_sub_devices",
+            return_value=[ATTR_MIXERS],
+        ) as mock_async_get_sub_devices,
+    ):
         await connection.async_update_sub_devices()
 
     mock_async_get_sub_devices.assert_awaited_once_with(mock_device)

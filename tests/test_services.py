@@ -1,7 +1,5 @@
 """Test Plum ecoMAX services."""
 
-
-import asyncio
 from unittest.mock import AsyncMock, Mock, patch
 
 from homeassistant.const import ATTR_ENTITY_ID, ATTR_NAME
@@ -23,6 +21,7 @@ from custom_components.plum_ecomax.const import (
     ATTR_WEEKDAYS,
     DOMAIN,
     WEEKDAYS,
+    DeviceType,
 )
 from custom_components.plum_ecomax.services import (
     SCHEDULES,
@@ -56,10 +55,13 @@ def set_connected(connected):
 async def test_extract_missing_target_device(hass: HomeAssistant) -> None:
     """Test extracting missing target device."""
     mock_connection = AsyncMock(spec=EcomaxConnection)
-    with patch(
-        "homeassistant.helpers.device_registry.DeviceRegistry.async_get",
-        return_value=False,
-    ), pytest.raises(HomeAssistantError):
+    with (
+        patch(
+            "homeassistant.helpers.device_registry.DeviceRegistry.async_get",
+            return_value=False,
+        ),
+        pytest.raises(HomeAssistantError),
+    ):
         async_extract_target_device("nonexistent", hass, mock_connection)
 
 
@@ -113,7 +115,35 @@ async def test_get_parameter_service(
                 "min_value": 0,
                 "max_value": 1,
                 "unit_of_measurement": "°C",
-                "device_type": "ecomax",
+                "device_type": DeviceType.ECOMAX,
+                "device_uid": "TEST",
+                "device_index": 0,
+            }
+        ]
+    }
+
+    # Test getting switch for EM device.
+    response = await hass.services.async_call(
+        DOMAIN,
+        SERVICE_GET_PARAMETER,
+        {
+            ATTR_ENTITY_ID: heating_temperature_entity_id,
+            ATTR_NAME: "weather_control",
+        },
+        blocking=True,
+        return_response=True,
+    )
+    await hass.async_block_till_done()
+
+    assert response == {
+        "parameters": [
+            {
+                "name": "weather_control",
+                "value": "off",
+                "min_value": "off",
+                "max_value": "on",
+                "unit_of_measurement": None,
+                "device_type": DeviceType.ECOMAX,
                 "device_uid": "TEST",
                 "device_index": 0,
             }
@@ -150,8 +180,9 @@ async def test_get_parameter_service(
     }
 
     # Test timing out while trying to get a parameter.
-    with pytest.raises(HomeAssistantError) as exc_info, patch(
-        "pyplumio.devices.Device.get", side_effect=asyncio.TimeoutError
+    with (
+        pytest.raises(HomeAssistantError) as exc_info,
+        patch("pyplumio.devices.Device.get", side_effect=TimeoutError),
     ):
         await hass.services.async_call(
             DOMAIN,
@@ -168,8 +199,9 @@ async def test_get_parameter_service(
     assert exc_info.value.translation_placeholders == {"parameter": "nonexistent"}
 
     # Test getting an invalid parameter.
-    with pytest.raises(ServiceValidationError) as exc_info, patch(
-        "pyplumio.devices.Device.get", return_value="nonexistent"
+    with (
+        pytest.raises(ServiceValidationError) as exc_info,
+        patch("pyplumio.devices.Device.get", return_value="nonexistent"),
     ):
         await hass.services.async_call(
             DOMAIN,
@@ -207,7 +239,7 @@ async def test_get_parameter_service(
                 "min_value": 0,
                 "max_value": 1,
                 "unit_of_measurement": "°C",
-                "device_type": "ecomax",
+                "device_type": DeviceType.ECOMAX,
                 "device_uid": "unknown",
                 "device_index": 0,
             }
@@ -261,9 +293,10 @@ async def test_set_parameter_service(
     mock_set.assert_awaited_once_with("mixer_target_temp", 0, timeout=15)
 
     # Test setting a parameter to an invalid value.
-    with pytest.raises(ServiceValidationError) as exc_info, patch(
-        "pyplumio.devices.Device.set", side_effect=ValueError
-    ) as mock_set:
+    with (
+        pytest.raises(ServiceValidationError) as exc_info,
+        patch("pyplumio.devices.Device.set", side_effect=ValueError) as mock_set,
+    ):
         await hass.services.async_call(
             DOMAIN,
             SERVICE_SET_PARAMETER,
@@ -279,13 +312,14 @@ async def test_set_parameter_service(
     assert exc_info.value.translation_key == "invalid_parameter_value"
     assert exc_info.value.translation_placeholders == {
         "parameter": "heating_target_temp",
-        "value": 100,
+        "value": "100.0",
     }
 
     # Test setting an invalid parameter.
-    with pytest.raises(ServiceValidationError) as exc_info, patch(
-        "pyplumio.devices.Device.set", side_effect=TypeError
-    ) as mock_set:
+    with (
+        pytest.raises(ServiceValidationError) as exc_info,
+        patch("pyplumio.devices.Device.set", side_effect=TypeError) as mock_set,
+    ):
         await hass.services.async_call(
             DOMAIN,
             SERVICE_SET_PARAMETER,
@@ -301,9 +335,10 @@ async def test_set_parameter_service(
     assert exc_info.value.translation_placeholders == {"parameter": "nonexistent"}
 
     # Test timing out while trying to set a parameter.
-    with pytest.raises(HomeAssistantError) as exc_info, patch(
-        "pyplumio.devices.Device.set", side_effect=asyncio.TimeoutError
-    ) as mock_set:
+    with (
+        pytest.raises(HomeAssistantError) as exc2_info,
+        patch("pyplumio.devices.Device.set", side_effect=TimeoutError) as mock_set,
+    ):
         await hass.services.async_call(
             DOMAIN,
             SERVICE_SET_PARAMETER,
@@ -315,13 +350,14 @@ async def test_set_parameter_service(
             blocking=True,
         )
 
-    assert exc_info.value.translation_key == "set_parameter_timeout"
-    assert exc_info.value.translation_placeholders == {"parameter": "nonexistent"}
+    assert exc2_info.value.translation_key == "set_parameter_timeout"
+    assert exc2_info.value.translation_placeholders == {"parameter": "nonexistent"}
 
     # Test failure while trying to set a parameter.
-    with pytest.raises(HomeAssistantError) as exc_info, patch(
-        "pyplumio.devices.Device.set", return_value=False
-    ) as mock_set:
+    with (
+        pytest.raises(HomeAssistantError) as exc2_info,
+        patch("pyplumio.devices.Device.set", return_value=False) as mock_set,
+    ):
         await hass.services.async_call(
             DOMAIN,
             SERVICE_SET_PARAMETER,
@@ -333,8 +369,8 @@ async def test_set_parameter_service(
             blocking=True,
         )
 
-    assert exc_info.value.translation_key == "set_parameter_failed"
-    assert exc_info.value.translation_placeholders == {"parameter": "nonexistent"}
+    assert exc2_info.value.translation_key == "set_parameter_failed"
+    assert exc2_info.value.translation_placeholders == {"parameter": "nonexistent"}
 
 
 @pytest.mark.usefixtures("ecomax_p")
@@ -383,8 +419,9 @@ async def test_get_schedule_service(
     }
 
     # Test getting an invalid schedule.
-    with pytest.raises(ServiceValidationError) as exc_info, patch(
-        "pyplumio.devices.Device.get_nowait", return_value=schedules
+    with (
+        pytest.raises(ServiceValidationError) as exc_info,
+        patch("pyplumio.devices.Device.get_nowait", return_value=schedules),
     ):
         await hass.services.async_call(
             DOMAIN,
@@ -416,7 +453,7 @@ async def test_set_schedule_service(
     mock_schedule.monday.set_state = Mock()
     mock_schedule.tuesday = Mock(spec=ScheduleDay)
     mock_schedule.tuesday.set_state = Mock()
-    mock_schedule.commit = Mock()
+    mock_schedule.commit = AsyncMock()
     schedules = {SCHEDULES[0]: mock_schedule}
 
     # Test setting schedule for EM device.
@@ -441,8 +478,9 @@ async def test_set_schedule_service(
 
     # Test setting a schedule with an invalid time interval.
     mock_schedule.monday.set_state.side_effect = ValueError
-    with pytest.raises(ServiceValidationError) as exc_info, patch(
-        "pyplumio.devices.Device.get_nowait", return_value=schedules
+    with (
+        pytest.raises(ServiceValidationError) as exc_info,
+        patch("pyplumio.devices.Device.get_nowait", return_value=schedules),
     ):
         await hass.services.async_call(
             DOMAIN,
@@ -465,8 +503,9 @@ async def test_set_schedule_service(
     }
 
     # Test setting an invalid schedule.
-    with pytest.raises(ServiceValidationError) as exc_info, patch(
-        "pyplumio.devices.Device.get_nowait", return_value=schedules
+    with (
+        pytest.raises(ServiceValidationError) as exc_info,
+        patch("pyplumio.devices.Device.get_nowait", return_value=schedules),
     ):
         await hass.services.async_call(
             DOMAIN,

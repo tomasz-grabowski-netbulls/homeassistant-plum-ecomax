@@ -1,38 +1,42 @@
 """Platform for switch integration."""
+
 from __future__ import annotations
 
-from collections.abc import Callable, Generator, Iterable
-from dataclasses import dataclass
+from collections.abc import Generator, Iterable
+from dataclasses import dataclass, field
 import logging
-from typing import Any, Literal
+from typing import Any
 
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.const import STATE_OFF, STATE_ON
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import ConfigType
 from pyplumio.const import ProductType
-from pyplumio.filters import on_change
-from pyplumio.helpers.parameter import Parameter
-from pyplumio.helpers.typing import ParameterValueType
+from pyplumio.helpers.parameter import Parameter, ParameterValue
+from pyplumio.structures.modules import ConnectedModules
 
+from . import PlumEcomaxConfigEntry
 from .connection import EcomaxConnection
-from .const import ALL, DOMAIN, MODULE_A
-from .entity import EcomaxEntity, MixerEntity
+from .const import ALL
+from .entity import (
+    DescriptorT,
+    EcomaxEntity,
+    EcomaxEntityDescription,
+    MixerEntity,
+    SubDescriptorT,
+    SubdeviceEntityDescription,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
 
-@dataclass(kw_only=True, slots=True)
-class EcomaxSwitchEntityDescription(SwitchEntityDescription):
+@dataclass(frozen=True, kw_only=True)
+class EcomaxSwitchEntityDescription(EcomaxEntityDescription, SwitchEntityDescription):
     """Describes an ecoMAX switch."""
 
-    product_types: set[ProductType] | Literal["all"] = ALL
-    filter_fn: Callable[[Any], Any] = on_change
-    module: str = MODULE_A
-    state_off: ParameterValueType = STATE_OFF
-    state_on: ParameterValueType = STATE_ON
+    state_off: ParameterValue = STATE_OFF
+    state_on: ParameterValue = STATE_ON
+    extra_states: dict[ParameterValue, bool] = field(default_factory=dict)
 
 
 SWITCH_TYPES: tuple[EcomaxSwitchEntityDescription, ...] = (
@@ -46,29 +50,30 @@ SWITCH_TYPES: tuple[EcomaxSwitchEntityDescription, ...] = (
     ),
     EcomaxSwitchEntityDescription(
         key="water_heater_work_mode",
-        translation_key="water_heater_pump_switch",
         state_off=0,
         state_on=2,
+        extra_states={1: True},
+        translation_key="water_heater_pump_switch",
     ),
     EcomaxSwitchEntityDescription(
         key="weather_control",
-        translation_key="weather_control_switch",
         product_types={ProductType.ECOMAX_P},
+        translation_key="weather_control_switch",
     ),
     EcomaxSwitchEntityDescription(
         key="fuzzy_logic",
-        translation_key="fuzzy_logic_switch",
         product_types={ProductType.ECOMAX_P},
+        translation_key="fuzzy_logic_switch",
     ),
     EcomaxSwitchEntityDescription(
         key="heating_schedule_switch",
-        translation_key="heating_schedule_switch",
         product_types={ProductType.ECOMAX_P},
+        translation_key="heating_schedule_switch",
     ),
     EcomaxSwitchEntityDescription(
         key="water_heater_schedule_switch",
-        translation_key="water_heater_schedule_switch",
         product_types={ProductType.ECOMAX_P},
+        translation_key="water_heater_schedule_switch",
     ),
 )
 
@@ -76,20 +81,10 @@ SWITCH_TYPES: tuple[EcomaxSwitchEntityDescription, ...] = (
 class EcomaxSwitch(EcomaxEntity, SwitchEntity):
     """Represents an ecoMAX switch."""
 
-    _attr_is_on: bool | None
-    _connection: EcomaxConnection
-    entity_description: EntityDescription
+    _attr_is_on: bool | None = None
+    entity_description: EcomaxSwitchEntityDescription
 
-    def __init__(
-        self, connection: EcomaxConnection, description: EcomaxSwitchEntityDescription
-    ):
-        """Initialize a new ecoMAX switch."""
-        self._attr_available = False
-        self._attr_is_on = None
-        self._connection = connection
-        self.entity_description = description
-
-    async def async_turn_on(self, **kwargs) -> None:
+    async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
         self.device.set_nowait(
             self.entity_description.key, self.entity_description.state_on
@@ -97,7 +92,7 @@ class EcomaxSwitch(EcomaxEntity, SwitchEntity):
         self._attr_is_on = True
         self.async_write_ha_state()
 
-    async def async_turn_off(self, **kwargs) -> None:
+    async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
         self.device.set_nowait(
             self.entity_description.key, self.entity_description.state_off
@@ -111,47 +106,49 @@ class EcomaxSwitch(EcomaxEntity, SwitchEntity):
             self.entity_description.state_on: True,
             self.entity_description.state_off: False,
         }
-
-        self._attr_is_on = states[value.value] if value.value in states else None
+        states |= self.entity_description.extra_states
+        self._attr_is_on = states.get(value.value, None)
         self.async_write_ha_state()
 
 
-@dataclass(slots=True)
-class MixerSwitchEntityDescription(EcomaxSwitchEntityDescription):
+@dataclass(frozen=True, kw_only=True)
+class MixerSwitchEntityDescription(
+    EcomaxSwitchEntityDescription, SubdeviceEntityDescription
+):
     """Describes a mixer switch entity."""
-
-    indexes: set[int] | Literal["all"] = ALL
 
 
 MIXER_SWITCH_TYPES: tuple[MixerSwitchEntityDescription, ...] = (
     MixerSwitchEntityDescription(
         key="summer_work",
-        translation_key="enable_in_summer_mode",
         product_types={ProductType.ECOMAX_P, ProductType.ECOMAX_I},
+        translation_key="enable_in_summer_mode",
     ),
     MixerSwitchEntityDescription(
         key="weather_control",
-        translation_key="weather_control_switch",
         product_types={ProductType.ECOMAX_P},
+        translation_key="weather_control_switch",
     ),
     MixerSwitchEntityDescription(
         key="disable_pump_on_thermostat",
-        translation_key="disable_pump_on_thermostat",
         product_types={ProductType.ECOMAX_P},
+        translation_key="disable_pump_on_thermostat",
     ),
     MixerSwitchEntityDescription(
         key="enable_circuit",
-        translation_key="enable_circuit",
+        indexes={1},
         product_types={ProductType.ECOMAX_I},
         state_off=0,
         state_on=1,
-        indexes={1},
+        translation_key="enable_circuit",
     ),
 )
 
 
 class MixerSwitch(MixerEntity, EcomaxSwitch):
     """Represents a mixer switch."""
+
+    entity_description: EcomaxSwitchEntityDescription
 
     def __init__(
         self,
@@ -166,8 +163,8 @@ class MixerSwitch(MixerEntity, EcomaxSwitch):
 
 def get_by_product_type(
     product_type: ProductType,
-    descriptions: Iterable[EcomaxSwitchEntityDescription],
-) -> Generator[EcomaxSwitchEntityDescription, None, None]:
+    descriptions: Iterable[DescriptorT],
+) -> Generator[DescriptorT, None, None]:
     """Filter descriptions by the product type."""
     for description in descriptions:
         if (
@@ -178,8 +175,9 @@ def get_by_product_type(
 
 
 def get_by_modules(
-    connected_modules, descriptions: Iterable[EcomaxSwitchEntityDescription]
-) -> Generator[EcomaxSwitchEntityDescription, None, None]:
+    connected_modules: ConnectedModules,
+    descriptions: Iterable[DescriptorT],
+) -> Generator[DescriptorT, None, None]:
     """Filter descriptions by connected modules."""
     for description in descriptions:
         if getattr(connected_modules, description.module, None) is not None:
@@ -187,8 +185,8 @@ def get_by_modules(
 
 
 def get_by_index(
-    index: int, descriptions: Iterable[MixerSwitchEntityDescription]
-) -> Generator[EcomaxSwitchEntityDescription, None, None]:
+    index: int, descriptions: Iterable[SubDescriptorT]
+) -> Generator[SubDescriptorT, None, None]:
     """Filter mixer/circuit descriptions by the index."""
     index += 1
     for description in descriptions:
@@ -209,39 +207,33 @@ def async_setup_ecomax_switches(connection: EcomaxConnection) -> list[EcomaxSwit
 
 def async_setup_mixer_switches(connection: EcomaxConnection) -> list[MixerSwitch]:
     """Set up the mixers switches."""
-    """Set up the mixer sensors."""
-    entities: list[MixerSwitch] = []
-    for index in connection.device.mixers:
-        entities.extend(
-            MixerSwitch(connection, description, index)
-            for description in get_by_index(
-                index,
-                get_by_modules(
-                    connection.device.modules,
-                    get_by_product_type(connection.product_type, MIXER_SWITCH_TYPES),
-                ),
-            )
+    return [
+        MixerSwitch(connection, description, index)
+        for index in connection.device.mixers
+        for description in get_by_index(
+            index,
+            get_by_modules(
+                connection.device.modules,
+                get_by_product_type(connection.product_type, MIXER_SWITCH_TYPES),
+            ),
         )
-
-    return entities
+    ]
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigType,
+    entry: PlumEcomaxConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> bool:
-    """Set up the sensor platform."""
-    connection: EcomaxConnection = hass.data[DOMAIN][config_entry.entry_id]
+    """Set up the switch platform."""
     _LOGGER.debug("Starting setup of switch platform...")
 
-    entities: list[EcomaxSwitch] = []
-
-    # Add ecoMAX switches.
-    entities.extend(async_setup_ecomax_switches(connection))
+    connection = entry.runtime_data.connection
+    entities = async_setup_ecomax_switches(connection)
 
     # Add mixer/circuit switches.
     if connection.has_mixers and await connection.async_setup_mixers():
-        entities.extend(async_setup_mixer_switches(connection))
+        entities += async_setup_mixer_switches(connection)
 
-    return async_add_entities(entities)
+    async_add_entities(entities)
+    return True

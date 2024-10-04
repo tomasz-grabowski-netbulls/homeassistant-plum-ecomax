@@ -10,7 +10,7 @@
         88
     ],
     "[python]": {
-        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.defaultFormatter": "charliermarsh.ruff",
         "editor.tabSize": 4
     },
     "[json]": {
@@ -19,5 +19,6 @@
     "files.associations": {
         "*.yaml": "home-assistant"
     },
-    "json.format.keepLines": true
+    "json.format.keepLines": true,
+    "python.defaultInterpreterPath": "python3.12"
 }

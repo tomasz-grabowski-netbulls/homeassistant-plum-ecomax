@@ -10,22 +10,21 @@ from homeassistant.components.number import (
     ATTR_VALUE,
     DOMAIN,
     SERVICE_SET_VALUE,
+    NumberDeviceClass,
     NumberMode,
 )
 from homeassistant.const import (
+    ATTR_DEVICE_CLASS,
     ATTR_ENTITY_ID,
     ATTR_FRIENDLY_NAME,
     ATTR_UNIT_OF_MEASUREMENT,
     PERCENTAGE,
     UnitOfTemperature,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, State
 from homeassistant.helpers import entity_registry as er
 from pyplumio.helpers.parameter import ParameterValues
-from pyplumio.structures.ecomax_parameters import (
-    EcomaxParameter,
-    EcomaxParameterDescription,
-)
+from pyplumio.structures.ecomax_parameters import EcomaxNumber, EcomaxNumberDescription
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -89,25 +88,28 @@ async def test_target_heating_temperature_number(
 
     # Get initial state.
     state = hass.states.get(target_heating_temperature_entity_id)
-    assert state.state == "0"
+    assert isinstance(state, State)
+    assert state.state == "0.0"
     assert state.attributes[ATTR_FRIENDLY_NAME] == "ecoMAX Target heating temperature"
     assert state.attributes[ATTR_UNIT_OF_MEASUREMENT] == UnitOfTemperature.CELSIUS
     assert state.attributes[ATTR_MIN] == 0
     assert state.attributes[ATTR_MAX] == 1
     assert state.attributes[ATTR_STEP] == 1
     assert state.attributes[ATTR_MODE] == NumberMode.AUTO
+    assert state.attributes[ATTR_DEVICE_CLASS] == NumberDeviceClass.TEMPERATURE
 
     # Dispatch new state.
     await connection.device.dispatch(
         target_heating_temperature_key,
-        EcomaxParameter(
+        EcomaxNumber(
             device=connection.device,
             values=ParameterValues(value=65, min_value=30, max_value=80),
-            description=EcomaxParameterDescription(target_heating_temperature_key),
+            description=EcomaxNumberDescription(target_heating_temperature_key),
         ),
     )
     state = hass.states.get(target_heating_temperature_entity_id)
-    assert state.state == "65"
+    assert isinstance(state, State)
+    assert state.state == "65.0"
     assert state.attributes[ATTR_MIN] == 30
     assert state.attributes[ATTR_MAX] == 80
 
@@ -116,6 +118,7 @@ async def test_target_heating_temperature_number(
         state = await async_set_value(hass, target_heating_temperature_entity_id, 70)
 
     mock_set_nowait.assert_called_once_with(target_heating_temperature_key, 70)
+    assert isinstance(state, State)
     assert state.state == "70.0"
 
 
@@ -140,25 +143,28 @@ async def test_minimum_heating_temperature_number(
 
     # Get initial state.
     state = hass.states.get(minimum_heating_temperature_entity_id)
-    assert state.state == "0"
+    assert isinstance(state, State)
+    assert state.state == "0.0"
     assert state.attributes[ATTR_FRIENDLY_NAME] == "ecoMAX Minimum heating temperature"
     assert state.attributes[ATTR_UNIT_OF_MEASUREMENT] == UnitOfTemperature.CELSIUS
     assert state.attributes[ATTR_MIN] == 0
     assert state.attributes[ATTR_MAX] == 1
     assert state.attributes[ATTR_STEP] == 1
     assert state.attributes[ATTR_MODE] == NumberMode.AUTO
+    assert state.attributes[ATTR_DEVICE_CLASS] == NumberDeviceClass.TEMPERATURE
 
     # Dispatch new state.
     await connection.device.dispatch(
         minimum_heating_temperature_key,
-        EcomaxParameter(
+        EcomaxNumber(
             device=connection.device,
             values=ParameterValues(value=30, min_value=10, max_value=40),
-            description=EcomaxParameterDescription(minimum_heating_temperature_key),
+            description=EcomaxNumberDescription(minimum_heating_temperature_key),
         ),
     )
     state = hass.states.get(minimum_heating_temperature_entity_id)
-    assert state.state == "30"
+    assert isinstance(state, State)
+    assert state.state == "30.0"
     assert state.attributes[ATTR_MIN] == 10
     assert state.attributes[ATTR_MAX] == 40
 
@@ -167,6 +173,7 @@ async def test_minimum_heating_temperature_number(
         state = await async_set_value(hass, minimum_heating_temperature_entity_id, 40)
 
     mock_set_nowait.assert_called_once_with(minimum_heating_temperature_key, 40)
+    assert isinstance(state, State)
     assert state.state == "40.0"
 
 
@@ -191,25 +198,28 @@ async def test_maximum_heating_temperature_number(
 
     # Get initial state.
     state = hass.states.get(maximum_heating_temperature_entity_id)
-    assert state.state == "0"
+    assert isinstance(state, State)
+    assert state.state == "0.0"
     assert state.attributes[ATTR_FRIENDLY_NAME] == "ecoMAX Maximum heating temperature"
     assert state.attributes[ATTR_UNIT_OF_MEASUREMENT] == UnitOfTemperature.CELSIUS
     assert state.attributes[ATTR_MIN] == 0
     assert state.attributes[ATTR_MAX] == 1
     assert state.attributes[ATTR_STEP] == 1
     assert state.attributes[ATTR_MODE] == NumberMode.AUTO
+    assert state.attributes[ATTR_DEVICE_CLASS] == NumberDeviceClass.TEMPERATURE
 
     # Dispatch new state.
     await connection.device.dispatch(
         maximum_heating_temperature_key,
-        EcomaxParameter(
+        EcomaxNumber(
             device=connection.device,
             values=ParameterValues(value=90, min_value=60, max_value=90),
-            description=EcomaxParameterDescription(maximum_heating_temperature_key),
+            description=EcomaxNumberDescription(maximum_heating_temperature_key),
         ),
     )
     state = hass.states.get(maximum_heating_temperature_entity_id)
-    assert state.state == "90"
+    assert isinstance(state, State)
+    assert state.state == "90.0"
     assert state.attributes[ATTR_MIN] == 60
     assert state.attributes[ATTR_MAX] == 90
 
@@ -218,6 +228,7 @@ async def test_maximum_heating_temperature_number(
         state = await async_set_value(hass, maximum_heating_temperature_entity_id, 70)
 
     mock_set_nowait.assert_called_once_with(maximum_heating_temperature_key, 70)
+    assert isinstance(state, State)
     assert state.state == "70.0"
 
 
@@ -242,25 +253,28 @@ async def test_grate_mode_temperature_number(
 
     # Get initial state.
     state = hass.states.get(grate_mode_temperature_entity_id)
-    assert state.state == "0"
+    assert isinstance(state, State)
+    assert state.state == "0.0"
     assert state.attributes[ATTR_FRIENDLY_NAME] == "ecoMAX Grate mode temperature"
     assert state.attributes[ATTR_UNIT_OF_MEASUREMENT] == UnitOfTemperature.CELSIUS
     assert state.attributes[ATTR_MIN] == 0
     assert state.attributes[ATTR_MAX] == 1
     assert state.attributes[ATTR_STEP] == 1
     assert state.attributes[ATTR_MODE] == NumberMode.AUTO
+    assert state.attributes[ATTR_DEVICE_CLASS] == NumberDeviceClass.TEMPERATURE
 
     # Dispatch new state.
     await connection.device.dispatch(
         grate_mode_temperature_key,
-        EcomaxParameter(
+        EcomaxNumber(
             device=connection.device,
             values=ParameterValues(value=65, min_value=30, max_value=80),
-            description=EcomaxParameterDescription(grate_mode_temperature_key),
+            description=EcomaxNumberDescription(grate_mode_temperature_key),
         ),
     )
     state = hass.states.get(grate_mode_temperature_entity_id)
-    assert state.state == "65"
+    assert isinstance(state, State)
+    assert state.state == "65.0"
     assert state.attributes[ATTR_MIN] == 30
     assert state.attributes[ATTR_MAX] == 80
 
@@ -269,6 +283,7 @@ async def test_grate_mode_temperature_number(
         state = await async_set_value(hass, grate_mode_temperature_entity_id, 70)
 
     mock_set_nowait.assert_called_once_with(grate_mode_temperature_key, 70)
+    assert isinstance(state, State)
     assert state.state == "70.0"
 
 
@@ -293,7 +308,8 @@ async def test_fuzzy_logic_minimum_power_number(
 
     # Get initial state.
     state = hass.states.get(fuzzy_logic_minimum_power_entity_id)
-    assert state.state == "0"
+    assert isinstance(state, State)
+    assert state.state == "0.0"
     assert state.attributes[ATTR_FRIENDLY_NAME] == "ecoMAX Fuzzy logic minimum power"
     assert state.attributes[ATTR_UNIT_OF_MEASUREMENT] == PERCENTAGE
     assert state.attributes[ATTR_MIN] == 0
@@ -304,14 +320,15 @@ async def test_fuzzy_logic_minimum_power_number(
     # Dispatch new state.
     await connection.device.dispatch(
         fuzzy_logic_minimum_power_key,
-        EcomaxParameter(
+        EcomaxNumber(
             device=connection.device,
             values=ParameterValues(value=30, min_value=0, max_value=50),
-            description=EcomaxParameterDescription(fuzzy_logic_minimum_power_key),
+            description=EcomaxNumberDescription(fuzzy_logic_minimum_power_key),
         ),
     )
     state = hass.states.get(fuzzy_logic_minimum_power_entity_id)
-    assert state.state == "30"
+    assert isinstance(state, State)
+    assert state.state == "30.0"
     assert state.attributes[ATTR_MIN] == 0
     assert state.attributes[ATTR_MAX] == 50
 
@@ -320,6 +337,7 @@ async def test_fuzzy_logic_minimum_power_number(
         state = await async_set_value(hass, fuzzy_logic_minimum_power_entity_id, 10)
 
     mock_set_nowait.assert_called_once_with(fuzzy_logic_minimum_power_key, 10)
+    assert isinstance(state, State)
     assert state.state == "10.0"
 
 
@@ -344,7 +362,8 @@ async def test_fuzzy_logic_maximum_power_number(
 
     # Get initial state.
     state = hass.states.get(fuzzy_logic_maximum_power_entity_id)
-    assert state.state == "0"
+    assert isinstance(state, State)
+    assert state.state == "0.0"
     assert state.attributes[ATTR_FRIENDLY_NAME] == "ecoMAX Fuzzy logic maximum power"
     assert state.attributes[ATTR_UNIT_OF_MEASUREMENT] == PERCENTAGE
     assert state.attributes[ATTR_MIN] == 0
@@ -355,14 +374,15 @@ async def test_fuzzy_logic_maximum_power_number(
     # Dispatch new state.
     await connection.device.dispatch(
         fuzzy_logic_maximum_power_key,
-        EcomaxParameter(
+        EcomaxNumber(
             device=connection.device,
             values=ParameterValues(value=50, min_value=30, max_value=100),
-            description=EcomaxParameterDescription(fuzzy_logic_maximum_power_key),
+            description=EcomaxNumberDescription(fuzzy_logic_maximum_power_key),
         ),
     )
     state = hass.states.get(fuzzy_logic_maximum_power_entity_id)
-    assert state.state == "50"
+    assert isinstance(state, State)
+    assert state.state == "50.0"
     assert state.attributes[ATTR_MIN] == 30
     assert state.attributes[ATTR_MAX] == 100
 
@@ -371,6 +391,7 @@ async def test_fuzzy_logic_maximum_power_number(
         state = await async_set_value(hass, fuzzy_logic_maximum_power_entity_id, 45)
 
     mock_set_nowait.assert_called_once_with(fuzzy_logic_maximum_power_key, 45)
+    assert isinstance(state, State)
     assert state.state == "45.0"
 
 
@@ -395,6 +416,7 @@ async def test_fuel_calorific_value_number(
 
     # Get initial state.
     state = hass.states.get(fuel_calorific_value_entity_id)
+    assert isinstance(state, State)
     assert state.state == "0.0"
     assert state.attributes[ATTR_FRIENDLY_NAME] == "ecoMAX Fuel calorific value"
     assert state.attributes[ATTR_UNIT_OF_MEASUREMENT] == CALORIFIC_KWH_KG
@@ -406,15 +428,16 @@ async def test_fuel_calorific_value_number(
     # Dispatch new state.
     await connection.device.dispatch(
         fuel_calorific_value_key,
-        EcomaxParameter(
+        EcomaxNumber(
             device=connection.device,
             values=ParameterValues(value=47, min_value=40, max_value=50),
-            description=EcomaxParameterDescription(
+            description=EcomaxNumberDescription(
                 fuel_calorific_value_key, multiplier=0.1
             ),
         ),
     )
     state = hass.states.get(fuel_calorific_value_entity_id)
+    assert isinstance(state, State)
     assert state.state == "4.7"
     assert state.attributes[ATTR_MIN] == 4.0
     assert state.attributes[ATTR_MAX] == 5.0
@@ -424,6 +447,7 @@ async def test_fuel_calorific_value_number(
         state = await async_set_value(hass, fuel_calorific_value_entity_id, 4.8)
 
     mock_set_nowait.assert_called_once_with(fuel_calorific_value_key, 4.8)
+    assert isinstance(state, State)
     assert state.state == "4.8"
 
 
@@ -450,7 +474,8 @@ async def test_mixer_target_mixer_temperature_number(
 
     # Get initial state.
     state = hass.states.get(target_mixer_temperature_entity_id)
-    assert state.state == "0"
+    assert isinstance(state, State)
+    assert state.state == "0.0"
     assert (
         state.attributes[ATTR_FRIENDLY_NAME]
         == "ecoMAX Mixer 1 Target mixer temperature"
@@ -460,18 +485,20 @@ async def test_mixer_target_mixer_temperature_number(
     assert state.attributes[ATTR_MAX] == 1
     assert state.attributes[ATTR_STEP] == 1
     assert state.attributes[ATTR_MODE] == NumberMode.AUTO
+    assert state.attributes[ATTR_DEVICE_CLASS] == NumberDeviceClass.TEMPERATURE
 
     # Dispatch new state.
     await connection.device.mixers[0].dispatch(
         target_mixer_temperature_key,
-        EcomaxParameter(
+        EcomaxNumber(
             device=connection.device,
             values=ParameterValues(value=65, min_value=30, max_value=80),
-            description=EcomaxParameterDescription(target_mixer_temperature_key),
+            description=EcomaxNumberDescription(target_mixer_temperature_key),
         ),
     )
     state = hass.states.get(target_mixer_temperature_entity_id)
-    assert state.state == "65"
+    assert isinstance(state, State)
+    assert state.state == "65.0"
     assert state.attributes[ATTR_MIN] == 30
     assert state.attributes[ATTR_MAX] == 80
 
@@ -480,6 +507,7 @@ async def test_mixer_target_mixer_temperature_number(
         state = await async_set_value(hass, target_mixer_temperature_entity_id, 70)
 
     mock_set_nowait.assert_called_once_with(target_mixer_temperature_key, 70)
+    assert isinstance(state, State)
     assert state.state == "70.0"
 
 
@@ -506,7 +534,8 @@ async def test_mixer_minimum_mixer_temperature_number(
 
     # Get initial state.
     state = hass.states.get(minimum_mixer_temperature_entity_id)
-    assert state.state == "0"
+    assert isinstance(state, State)
+    assert state.state == "0.0"
     assert (
         state.attributes[ATTR_FRIENDLY_NAME]
         == "ecoMAX Mixer 1 Minimum mixer temperature"
@@ -516,18 +545,20 @@ async def test_mixer_minimum_mixer_temperature_number(
     assert state.attributes[ATTR_MAX] == 1
     assert state.attributes[ATTR_STEP] == 1
     assert state.attributes[ATTR_MODE] == NumberMode.AUTO
+    assert state.attributes[ATTR_DEVICE_CLASS] == NumberDeviceClass.TEMPERATURE
 
     # Dispatch new state.
     await connection.device.mixers[0].dispatch(
         minimum_mixer_temperature_key,
-        EcomaxParameter(
+        EcomaxNumber(
             device=connection.device,
             values=ParameterValues(value=30, min_value=10, max_value=40),
-            description=EcomaxParameterDescription(minimum_mixer_temperature_key),
+            description=EcomaxNumberDescription(minimum_mixer_temperature_key),
         ),
     )
     state = hass.states.get(minimum_mixer_temperature_entity_id)
-    assert state.state == "30"
+    assert isinstance(state, State)
+    assert state.state == "30.0"
     assert state.attributes[ATTR_MIN] == 10
     assert state.attributes[ATTR_MAX] == 40
 
@@ -536,6 +567,7 @@ async def test_mixer_minimum_mixer_temperature_number(
         state = await async_set_value(hass, minimum_mixer_temperature_entity_id, 40)
 
     mock_set_nowait.assert_called_once_with(minimum_mixer_temperature_key, 40)
+    assert isinstance(state, State)
     assert state.state == "40.0"
 
 
@@ -562,7 +594,8 @@ async def test_mixer_maximum_mixer_temperature_number(
 
     # Get initial state.
     state = hass.states.get(maximum_mixer_temperature_entity_id)
-    assert state.state == "0"
+    assert isinstance(state, State)
+    assert state.state == "0.0"
     assert (
         state.attributes[ATTR_FRIENDLY_NAME]
         == "ecoMAX Mixer 1 Maximum mixer temperature"
@@ -572,18 +605,20 @@ async def test_mixer_maximum_mixer_temperature_number(
     assert state.attributes[ATTR_MAX] == 1
     assert state.attributes[ATTR_STEP] == 1
     assert state.attributes[ATTR_MODE] == NumberMode.AUTO
+    assert state.attributes[ATTR_DEVICE_CLASS] == NumberDeviceClass.TEMPERATURE
 
     # Dispatch new state.
     await connection.device.mixers[0].dispatch(
         maximum_mixer_temperature_key,
-        EcomaxParameter(
+        EcomaxNumber(
             device=connection.device,
             values=ParameterValues(value=90, min_value=60, max_value=90),
-            description=EcomaxParameterDescription(maximum_mixer_temperature_key),
+            description=EcomaxNumberDescription(maximum_mixer_temperature_key),
         ),
     )
     state = hass.states.get(maximum_mixer_temperature_entity_id)
-    assert state.state == "90"
+    assert isinstance(state, State)
+    assert state.state == "90.0"
     assert state.attributes[ATTR_MIN] == 60
     assert state.attributes[ATTR_MAX] == 90
 
@@ -592,6 +627,7 @@ async def test_mixer_maximum_mixer_temperature_number(
         state = await async_set_value(hass, maximum_mixer_temperature_entity_id, 70)
 
     mock_set_nowait.assert_called_once_with(maximum_mixer_temperature_key, 70)
+    assert isinstance(state, State)
     assert state.state == "70.0"
 
 
@@ -618,7 +654,8 @@ async def test_circuit_target_circuit_temperature_number(
 
     # Get initial state.
     state = hass.states.get(target_circuit_temperature_entity_id)
-    assert state.state == "0"
+    assert isinstance(state, State)
+    assert state.state == "0.0"
     assert (
         state.attributes[ATTR_FRIENDLY_NAME]
         == "ecoMAX Circuit 1 Target circuit temperature"
@@ -628,18 +665,20 @@ async def test_circuit_target_circuit_temperature_number(
     assert state.attributes[ATTR_MAX] == 1
     assert state.attributes[ATTR_STEP] == 1
     assert state.attributes[ATTR_MODE] == NumberMode.AUTO
+    assert state.attributes[ATTR_DEVICE_CLASS] == NumberDeviceClass.TEMPERATURE
 
     # Dispatch new state.
     await connection.device.mixers[0].dispatch(
         target_circuit_temperature_key,
-        EcomaxParameter(
+        EcomaxNumber(
             device=connection.device,
             values=ParameterValues(value=65, min_value=30, max_value=80),
-            description=EcomaxParameterDescription(target_circuit_temperature_key),
+            description=EcomaxNumberDescription(target_circuit_temperature_key),
         ),
     )
     state = hass.states.get(target_circuit_temperature_entity_id)
-    assert state.state == "65"
+    assert isinstance(state, State)
+    assert state.state == "65.0"
     assert state.attributes[ATTR_MIN] == 30
     assert state.attributes[ATTR_MAX] == 80
 
@@ -648,6 +687,7 @@ async def test_circuit_target_circuit_temperature_number(
         state = await async_set_value(hass, target_circuit_temperature_entity_id, 70)
 
     mock_set_nowait.assert_called_once_with(target_circuit_temperature_key, 70)
+    assert isinstance(state, State)
     assert state.state == "70.0"
 
 
@@ -674,7 +714,8 @@ async def test_circuit_minimum_circuit_temperature_number(
 
     # Get initial state.
     state = hass.states.get(minimum_circuit_temperature_entity_id)
-    assert state.state == "0"
+    assert isinstance(state, State)
+    assert state.state == "0.0"
     assert (
         state.attributes[ATTR_FRIENDLY_NAME]
         == "ecoMAX Circuit 2 Minimum circuit temperature"
@@ -684,18 +725,20 @@ async def test_circuit_minimum_circuit_temperature_number(
     assert state.attributes[ATTR_MAX] == 1
     assert state.attributes[ATTR_STEP] == 1
     assert state.attributes[ATTR_MODE] == NumberMode.AUTO
+    assert state.attributes[ATTR_DEVICE_CLASS] == NumberDeviceClass.TEMPERATURE
 
     # Dispatch new state.
     await connection.device.mixers[1].dispatch(
         minimum_circuit_temperature_key,
-        EcomaxParameter(
+        EcomaxNumber(
             device=connection.device,
             values=ParameterValues(value=30, min_value=10, max_value=40),
-            description=EcomaxParameterDescription(minimum_circuit_temperature_key),
+            description=EcomaxNumberDescription(minimum_circuit_temperature_key),
         ),
     )
     state = hass.states.get(minimum_circuit_temperature_entity_id)
-    assert state.state == "30"
+    assert isinstance(state, State)
+    assert state.state == "30.0"
     assert state.attributes[ATTR_MIN] == 10
     assert state.attributes[ATTR_MAX] == 40
 
@@ -704,6 +747,7 @@ async def test_circuit_minimum_circuit_temperature_number(
         state = await async_set_value(hass, minimum_circuit_temperature_entity_id, 40)
 
     mock_set_nowait.assert_called_once_with(minimum_circuit_temperature_key, 40)
+    assert isinstance(state, State)
     assert state.state == "40.0"
 
 
@@ -730,7 +774,8 @@ async def test_circuit_maximum_circuit_temperature_number(
 
     # Get initial state.
     state = hass.states.get(maximum_circuit_temperature_entity_id)
-    assert state.state == "0"
+    assert isinstance(state, State)
+    assert state.state == "0.0"
     assert (
         state.attributes[ATTR_FRIENDLY_NAME]
         == "ecoMAX Circuit 2 Maximum circuit temperature"
@@ -740,18 +785,20 @@ async def test_circuit_maximum_circuit_temperature_number(
     assert state.attributes[ATTR_MAX] == 1
     assert state.attributes[ATTR_STEP] == 1
     assert state.attributes[ATTR_MODE] == NumberMode.AUTO
+    assert state.attributes[ATTR_DEVICE_CLASS] == NumberDeviceClass.TEMPERATURE
 
     # Dispatch new state.
     await connection.device.mixers[1].dispatch(
         maximum_circuit_temperature_key,
-        EcomaxParameter(
+        EcomaxNumber(
             device=connection.device,
             values=ParameterValues(value=90, min_value=60, max_value=90),
-            description=EcomaxParameterDescription(maximum_circuit_temperature_key),
+            description=EcomaxNumberDescription(maximum_circuit_temperature_key),
         ),
     )
     state = hass.states.get(maximum_circuit_temperature_entity_id)
-    assert state.state == "90"
+    assert isinstance(state, State)
+    assert state.state == "90.0"
     assert state.attributes[ATTR_MIN] == 60
     assert state.attributes[ATTR_MAX] == 90
 
@@ -760,6 +807,7 @@ async def test_circuit_maximum_circuit_temperature_number(
         state = await async_set_value(hass, maximum_circuit_temperature_entity_id, 70)
 
     mock_set_nowait.assert_called_once_with(maximum_circuit_temperature_key, 70)
+    assert isinstance(state, State)
     assert state.state == "70.0"
 
 
@@ -786,7 +834,8 @@ async def test_circuit_day_target_circuit_temperature_number(
 
     # Get initial state.
     state = hass.states.get(day_target_circuit_temperature_entity_id)
-    assert state.state == "0"
+    assert isinstance(state, State)
+    assert state.state == "0.0"
     assert (
         state.attributes[ATTR_FRIENDLY_NAME]
         == "ecoMAX Circuit 2 Day target circuit temperature"
@@ -796,18 +845,20 @@ async def test_circuit_day_target_circuit_temperature_number(
     assert state.attributes[ATTR_MAX] == 1
     assert state.attributes[ATTR_STEP] == 1
     assert state.attributes[ATTR_MODE] == NumberMode.AUTO
+    assert state.attributes[ATTR_DEVICE_CLASS] == NumberDeviceClass.TEMPERATURE
 
     # Dispatch new state.
     await connection.device.mixers[1].dispatch(
         day_target_circuit_temperature_key,
-        EcomaxParameter(
+        EcomaxNumber(
             device=connection.device,
             values=ParameterValues(value=65, min_value=30, max_value=80),
-            description=EcomaxParameterDescription(day_target_circuit_temperature_key),
+            description=EcomaxNumberDescription(day_target_circuit_temperature_key),
         ),
     )
     state = hass.states.get(day_target_circuit_temperature_entity_id)
-    assert state.state == "65"
+    assert isinstance(state, State)
+    assert state.state == "65.0"
     assert state.attributes[ATTR_MIN] == 30
     assert state.attributes[ATTR_MAX] == 80
 
@@ -818,6 +869,7 @@ async def test_circuit_day_target_circuit_temperature_number(
         )
 
     mock_set_nowait.assert_called_once_with(day_target_circuit_temperature_key, 70)
+    assert isinstance(state, State)
     assert state.state == "70.0"
 
 
@@ -844,7 +896,8 @@ async def test_circuit_night_target_circuit_temperature_number(
 
     # Get initial state.
     state = hass.states.get(night_target_circuit_temperature_entity_id)
-    assert state.state == "0"
+    assert isinstance(state, State)
+    assert state.state == "0.0"
     assert (
         state.attributes[ATTR_FRIENDLY_NAME]
         == "ecoMAX Circuit 2 Night target circuit temperature"
@@ -854,20 +907,20 @@ async def test_circuit_night_target_circuit_temperature_number(
     assert state.attributes[ATTR_MAX] == 1
     assert state.attributes[ATTR_STEP] == 1
     assert state.attributes[ATTR_MODE] == NumberMode.AUTO
+    assert state.attributes[ATTR_DEVICE_CLASS] == NumberDeviceClass.TEMPERATURE
 
     # Dispatch new state.
     await connection.device.mixers[1].dispatch(
         night_target_circuit_temperature_key,
-        EcomaxParameter(
+        EcomaxNumber(
             device=connection.device,
             values=ParameterValues(value=65, min_value=30, max_value=80),
-            description=EcomaxParameterDescription(
-                night_target_circuit_temperature_key
-            ),
+            description=EcomaxNumberDescription(night_target_circuit_temperature_key),
         ),
     )
     state = hass.states.get(night_target_circuit_temperature_entity_id)
-    assert state.state == "65"
+    assert isinstance(state, State)
+    assert state.state == "65.0"
     assert state.attributes[ATTR_MIN] == 30
     assert state.attributes[ATTR_MAX] == 80
 
@@ -878,4 +931,5 @@ async def test_circuit_night_target_circuit_temperature_number(
         )
 
     mock_set_nowait.assert_called_once_with(night_target_circuit_temperature_key, 70)
+    assert isinstance(state, State)
     assert state.state == "70.0"

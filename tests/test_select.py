@@ -8,24 +8,12 @@ from homeassistant.components.select.const import (
     DOMAIN,
     SERVICE_SELECT_OPTION,
 )
-from homeassistant.const import (
-    ATTR_ENTITY_ID,
-    ATTR_FRIENDLY_NAME,
-    ATTR_ICON,
-    STATE_OFF,
-    STATE_ON,
-)
-from homeassistant.core import HomeAssistant
+from homeassistant.const import ATTR_ENTITY_ID, ATTR_FRIENDLY_NAME, STATE_OFF
+from homeassistant.core import HomeAssistant, State
 from homeassistant.helpers import entity_registry as er
 from pyplumio.helpers.parameter import ParameterValues
-from pyplumio.structures.ecomax_parameters import (
-    EcomaxParameter,
-    EcomaxParameterDescription,
-)
-from pyplumio.structures.mixer_parameters import (
-    MixerParameter,
-    MixerParameterDescription,
-)
+from pyplumio.structures.ecomax_parameters import EcomaxNumber, EcomaxNumberDescription
+from pyplumio.structures.mixer_parameters import MixerNumber, MixerNumberDescription
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -35,6 +23,8 @@ from custom_components.plum_ecomax.select import (
     STATE_HEATED_FLOOR,
     STATE_HEATING,
     STATE_PUMP_ONLY,
+    STATE_SUMMER,
+    STATE_WINTER,
 )
 
 
@@ -94,32 +84,34 @@ async def test_summer_mode_select(
 
     # Get initial value.
     state = hass.states.get(summer_mode_entity_id)
-    assert state.state == STATE_OFF
+    assert isinstance(state, State)
+    assert state.state == STATE_WINTER
     assert state.attributes[ATTR_FRIENDLY_NAME] == "ecoMAX Summer mode"
-    assert state.attributes[ATTR_ICON] == "mdi:weather-sunny"
-    assert state.attributes[ATTR_OPTIONS] == [STATE_OFF, STATE_AUTO, STATE_ON]
+    assert state.attributes[ATTR_OPTIONS] == [STATE_WINTER, STATE_SUMMER, STATE_AUTO]
     options = state.attributes[ATTR_OPTIONS]
 
     # Dispatch new value.
     await connection.device.dispatch(
         summer_mode_select_key,
-        EcomaxParameter(
+        EcomaxNumber(
             device=connection.device,
-            values=ParameterValues(value=1, min_value=0, max_value=2),
-            description=EcomaxParameterDescription(summer_mode_select_key),
+            values=ParameterValues(value=2, min_value=0, max_value=2),
+            description=EcomaxNumberDescription(summer_mode_select_key),
         ),
     )
     state = hass.states.get(summer_mode_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_AUTO
 
     # Select an option.
     with patch("pyplumio.devices.Device.set_nowait") as mock_set_nowait:
-        state = await async_select_option(hass, summer_mode_entity_id, STATE_ON)
+        state = await async_select_option(hass, summer_mode_entity_id, STATE_SUMMER)
 
     mock_set_nowait.assert_called_once_with(
-        summer_mode_select_key, options.index(STATE_ON)
+        summer_mode_select_key, options.index(STATE_SUMMER)
     )
-    assert state.state == STATE_ON
+    assert isinstance(state, State)
+    assert state.state == STATE_SUMMER
 
 
 @pytest.mark.usefixtures("ecomax_p", "mixers")
@@ -143,6 +135,7 @@ async def test_mixer_work_mode_select(
 
     # Get initial value.
     state = hass.states.get(work_mode_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
     assert state.attributes[ATTR_FRIENDLY_NAME] == "ecoMAX Mixer 1 Work mode"
     assert state.attributes[ATTR_OPTIONS] == [
@@ -156,13 +149,14 @@ async def test_mixer_work_mode_select(
     # Dispatch new value.
     await connection.device.mixers[0].dispatch(
         work_mode_select_key,
-        MixerParameter(
+        MixerNumber(
             device=connection.device,
             values=ParameterValues(value=0, min_value=0, max_value=2),
-            description=MixerParameterDescription(work_mode_select_key),
+            description=MixerNumberDescription(work_mode_select_key),
         ),
     )
     state = hass.states.get(work_mode_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
 
     # Select an option.
@@ -172,6 +166,7 @@ async def test_mixer_work_mode_select(
     mock_set_nowait.assert_called_once_with(
         work_mode_select_key, options.index(STATE_HEATING)
     )
+    assert isinstance(state, State)
     assert state.state == STATE_HEATING
 
 
@@ -196,6 +191,7 @@ async def test_circuit_work_mode_select(
 
     # Get initial value.
     state = hass.states.get(work_mode_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
     assert state.attributes[ATTR_FRIENDLY_NAME] == "ecoMAX Circuit 2 Work mode"
     assert state.attributes[ATTR_OPTIONS] == [
@@ -208,13 +204,14 @@ async def test_circuit_work_mode_select(
     # Dispatch new value.
     await connection.device.mixers[1].dispatch(
         work_mode_select_key,
-        MixerParameter(
+        MixerNumber(
             device=connection.device,
             values=ParameterValues(value=0, min_value=0, max_value=2),
-            description=MixerParameterDescription(work_mode_select_key),
+            description=MixerNumberDescription(work_mode_select_key),
         ),
     )
     state = hass.states.get(work_mode_entity_id)
+    assert isinstance(state, State)
     assert state.state == STATE_OFF
 
     # Select an option.
@@ -224,6 +221,7 @@ async def test_circuit_work_mode_select(
     mock_set_nowait.assert_called_once_with(
         work_mode_select_key, options.index(STATE_HEATING)
     )
+    assert isinstance(state, State)
     assert state.state == STATE_HEATING
 
 

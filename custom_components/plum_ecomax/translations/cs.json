@@ -1,10 +1,10 @@
 {
   "config": {
     "abort": {
-      "unsupported_product": "Nepodporovaný produkt",
+      "already_configured": "Zařízení je již nakonfigurováno",
       "discovery_failed": "Zjišťování modulu nelze dokončit",
       "no_devices_found": "V síti nebyla nalezena žádná zařízení",
-      "already_configured": "Zařízení je již nakonfigurováno"
+      "unsupported_product": "Nepodporovaný produkt"
     },
     "error": {
       "cannot_connect": "Připojení selhalo",
@@ -12,333 +12,495 @@
       "unknown": "Neočekávaná chyba"
     },
     "progress": {
-      "wait_for_device": "Navazování připojení k zařízení...",
-      "identify_device": "Kontrola modelu zařízení...",
-      "discover_modules": "Objevování modulů pro {model}..."
+      "discover_modules": "Objevování modulů pro {model}...",
+      "identify_device": "Kontrola modelu zařízení..."
     },
     "step": {
-      "user": {
-        "title": "Choose a connection type",
-        "menu_options": {
-          "tcp": "Připojte se přes síť (TCP)",
-          "serial": "Připojte se přes sériový port (RS-485)"
-        }
-      },
       "serial": {
-        "title": "Serial settings",
         "data": {
-          "device": "Cesta",
-          "baudrate": "Přenosová rychlost"
-        }
+          "baudrate": "Přenosová rychlost",
+          "device": "Cesta"
+        },
+        "title": "Sériové nastavení"
       },
       "tcp": {
-        "title": "Network settings",
         "data": {
           "host": "IP adresa/Doména",
           "port": "Port"
-        }
+        },
+        "title": "Síťové nastavení"
+      },
+      "user": {
+        "menu_options": {
+          "serial": "Připojte se přes sériový port (RS-485)",
+          "tcp": "Připojte se přes síť (TCP)"
+        },
+        "title": "Vyberte typ připojení"
       }
+    }
+  },
+  "device": {
+    "circuit": {
+      "name": "{device_name} Okruh {mixer_number}"
+    },
+    "mixer": {
+      "name": "{device_name} Mixer {mixer_number}"
+    },
+    "thermostat": {
+      "name": "{device_name} Thermostat {thermostat_number}"
     }
   },
   "entity": {
     "binary_sensor": {
-      "heating_pump": { "name": "Heating pump" },
-      "water_heater_pump": { "name": "Water heater pump" },
-      "circulation_pump": { "name": "Circulation pump" },
-      "alert": { "name": "Alert" },
-      "connection_status": { "name": "Connection status" },
-      "fan": { "name": "Fan" },
-      "exhaust_fan": { "name": "Exhaust fan" },
-      "feeder": { "name": "Feeder" },
-      "lighter": { "name": "Lighter" },
-      "solar_pump": { "name": "Solar pump" },
-      "fireplace_pump": { "name": "Fireplace pump" },
-      "mixer_pump": { "name": "Mixer pump" },
-      "circuit_pump": { "name": "Circuit pump" }
+      "alert": {
+        "name": "Upozornění"
+      },
+      "circuit_pump": {
+        "name": "Okruhové čepadlo"
+      },
+      "circulation_pump": {
+        "name": "Cirkulační čerpadlo"
+      },
+      "connection_status": {
+        "name": "Stav připojení"
+      },
+      "exhaust_fan": {
+        "name": "Odsávací ventilátor"
+      },
+      "fan": {
+        "name": "Ventilátor"
+      },
+      "feeder": {
+        "name": "Podavač"
+      },
+      "fireplace_pump": {
+        "name": "Čerpadlo ohniště"
+      },
+      "heating_pump": {
+        "name": "Čerpadlo topení"
+      },
+      "lighter": {
+        "name": "Podpalovač"
+      },
+      "mixer_pump": {
+        "name": "Směšovací čerpadlo"
+      },
+      "solar_pump": {
+        "name": "Solární čerpadlo"
+      },
+      "water_heater_pump": {
+        "name": "Čerpadlo ohřívače vody"
+      }
     },
     "button": {
-      "detect_sub_devices": { "name": "Detect sub-devices" }
+      "detect_sub_devices": {
+        "name": "Zjištění vedlejších zařízení"
+      }
     },
     "climate": {
-      "ecomax_climate": {
-        "name": "Thermostat",
+      "thermostat": {
+        "name": "Termostat",
         "state_attributes": {
           "preset_mode": {
             "state": {
-              "schedule": "Harmonogram",
               "airing": "Větrání",
-              "party": "Párty",
+              "antifreeze": "Protizámrz",
               "holidays": "Prázdniny",
-              "antifreeze": "Protizámrz"
+              "party": "Párty",
+              "schedule": "Harmonogram"
             }
           }
         }
       }
     },
     "number": {
-      "target_heating_temp": { "name": "Target heating temperature" },
-      "min_heating_temp": { "name": "Minimum heating temperature" },
-      "max_heating_temp": { "name": "Maximum heating temperature" },
-      "grate_mode_temp": { "name": "Grate mode temperature" },
-      "fuzzy_logic_min_power": { "name": "Fuzzy logic minimum power" },
-      "fuzzy_logic_max_power": { "name": "Fuzzy logic maximum power" },
-      "fuel_calorific_value": { "name": "Fuel calorific value" },
-      "target_mixer_temp": { "name": "Target mixer temperature" },
-      "min_mixer_temp": { "name": "Minimum mixer temperature" },
-      "max_mixer_temp": { "name": "Maximum mixer temperature" },
-      "target_circuit_temp": { "name": "Target circuit temperature" },
-      "min_circuit_temp": { "name": "Minimum circuit temperature" },
-      "max_circuit_temp": { "name": "Maximum circuit temperature" },
-      "day_target_circuit_temp": { "name": "Day target circuit temperature" },
-      "night_target_circuit_temp": { "name": "Night target circuit temperature" }
+      "day_target_circuit_temp": {
+        "name": "Denní cílová teplota okruhu"
+      },
+      "fuel_calorific_value": {
+        "name": "Výhřevnost paliva"
+      },
+      "fuzzy_logic_max_power": {
+        "name": "Maximální výkon fuzzy logiky"
+      },
+      "fuzzy_logic_min_power": {
+        "name": "Minimální výkon fuzzy logiky"
+      },
+      "grate_mode_temp": {
+        "name": "Teplota režimu roštu"
+      },
+      "max_circuit_temp": {
+        "name": "Maximální teplota okruhu"
+      },
+      "max_heating_temp": {
+        "name": "Maximální teplota ohřevu"
+      },
+      "max_mixer_temp": {
+        "name": "Maximální teplota směšovače"
+      },
+      "min_circuit_temp": {
+        "name": "Minimální teplova okruhu"
+      },
+      "min_heating_temp": {
+        "name": "Minimální teplota ohřevu"
+      },
+      "min_mixer_temp": {
+        "name": "Minimální teplota směšovače"
+      },
+      "night_target_circuit_temp": {
+        "name": "Noční cílová teplota okruhu"
+      },
+      "target_circuit_temp": {
+        "name": "Cílová teplota okruhu"
+      },
+      "target_heating_temp": {
+        "name": "Cílová teplota ohřevu"
+      },
+      "target_mixer_temp": {
+        "name": "Cílová teplota směšovače"
+      }
     },
     "select": {
-      "summer_mode": {
-        "name": "Summer mode",
+      "mixer_work_mode": {
+        "name": "Pracovní režim",
         "state": {
-          "on": "On",
-          "off": "Off",
-          "auto": "Auto"
+          "heated_floor": "Vyhřívání podlahy",
+          "heating": "Topení",
+          "off": "Vypnuto",
+          "pump_only": "Pouze čerpadlo"
         }
       },
-      "mixer_work_mode": {
-        "name": "Work mode",
+      "summer_mode": {
+        "name": "Letní režim",
         "state": {
-          "off": "Off",
-          "heating": "Heating",
-          "heated_floor": "Heated floor",
-          "pump_only": "Pump only"
+          "auto": "Auto",
+          "summer": "Léto",
+          "winter": "Zima"
         }
       }
     },
     "sensor": {
-      "heating_temp": { "name": "Heating temperature" },
-      "water_heater_temp": { "name": "Water heater temperature" },
-      "outside_temp": { "name": "Outside temperature" },
-      "heating_target": { "name": "Heating target temperature" },
-      "water_heater_target": { "name": "Water heater target temperature" },
+      "ash_pan_full": {
+        "name": "Plný popelník"
+      },
+      "boiler_load": {
+        "name": "Zatížení kotle"
+      },
+      "boiler_power": {
+        "name": "Výkon kotle"
+      },
+      "circuit_target_temp": {
+        "name": "Cílová teplota okruhu"
+      },
+      "circuit_temp": {
+        "name": "Teplota okruhu"
+      },
+      "connected_modules": {
+        "name": "Připojení moduly",
+        "state_attributes": {
+          "ecolambda": {
+            "name": "ecoLAMBDA verze"
+          },
+          "ecoster": {
+            "name": "ecoSTER verze"
+          },
+          "module_a": {
+            "name": "Modul A verze"
+          },
+          "module_b": {
+            "name": "Modul B verze"
+          },
+          "module_c": {
+            "name": "Modul C verze"
+          },
+          "panel": {
+            "name": "Panel verze"
+          }
+        }
+      },
       "ecomax_state": {
         "name": "State",
         "state": {
-          "off": "Vypnuto",
-          "stabilization": "Stabilizace",
-          "kindling": "Roztápění",
-          "heating": "Práce",
-          "paused": "Pozastaveno",
-          "idle": "Nečinný",
-          "standby": "Pohotovost",
+          "alert": "Upozornění",
           "burning_off": "Spalování",
-          "alert": "Výstraha",
+          "heating": "Práce",
+          "idle": "Nečinný",
+          "kindling": "Roztápění",
+          "off": "Vypnuto",
+          "paused": "Pozastaveno",
+          "stabilization": "Stabilizace",
+          "standby": "Pohotovost",
           "unknown": "Neznámý"
         },
         "state_attributes": {
-          "numeric_state": { "name": "Numeric state" }
+          "numeric_state": {
+            "name": "Číselný stav"
+          }
         }
       },
-      "service_password": { "name": "Service password" },
-      "connected_modules": {
-        "name": "Connected modules",
-        "state_attributes": {
-          "panel": { "name": "Panel software version" },
-          "module_a": { "name": "Module A software version" },
-          "module_b": { "name": "Module B software version" },
-          "module_c": { "name": "Module C software version" },
-          "ecoster": { "name": "ecoSTER software version" },
-          "ecolambda": { "name": "ecoLAMBDA software version" }
-        }
+      "exhaust_temp": {
+        "name": "Teplota odsávání"
       },
-      "uid": { "name": "UID" },
-      "oxygen_level": { "name": "Oxygen level" },
-      "boiler_power": { "name": "Boiler power" },
-      "fuel_level": { "name": "Fuel level" },
-      "fuel_consumption": { "name": "Fuel consumption" },
-      "boiler_load": { "name": "Boiler load" },
-      "fan_power": { "name": "Fan power" },
-      "flame_intensity": { "name": "Flame intensity" },
-      "feeder_temp": { "name": "Feeder temperature" },
-      "exhaust_temp": { "name": "Exhaust temperature" },
-      "return_temp": { "name": "Return temperature" },
-      "lower_buffer_temp": { "name": "Lower buffer temperature" },
-      "upper_buffer_temp": { "name": "Upper buffer temperature" },
-      "lower_solar_temp": { "name": "Lower solar temperature" },
-      "upper_solar_temp": { "name": "Upper solar temperature" },
-      "fireplace_temp": { "name": "Fireplace temperature" },
-      "mixer_temp": { "name": "Mixer temperature" },
-      "mixer_target_temp": { "name": "Mixer target temperature" },
-      "mixer_valve_opening_percentage": { "name": "Mixer valve opening percentage" },
+      "fan_power": {
+        "name": "Výkon ventilátoru"
+      },
+      "feeder_temp": {
+        "name": "Teplota podavače"
+      },
+      "fireplace_temp": {
+        "name": "Teplota ohniště"
+      },
+      "flame_intensity": {
+        "name": "Intenzita plamene"
+      },
+      "fuel_consumption": {
+        "name": "Spotřeba paliva"
+      },
+      "fuel_level": {
+        "name": "Úroveň paliva"
+      },
+      "heating_target": {
+        "name": "Cílová teplota ohřevu"
+      },
+      "heating_temp": {
+        "name": "Teplota ohřevu"
+      },
+      "lower_buffer_temp": {
+        "name": "Spodní teplota vyrovnávače"
+      },
+      "lower_solar_temp": {
+        "name": "Spodní teplota solárů"
+      },
+      "mixer_target_temp": {
+        "name": "Cílová teplota směšovače"
+      },
+      "mixer_temp": {
+        "name": "Teplota směšovače"
+      },
+      "mixer_valve_opening_percentage": {
+        "name": "Procento otevření směšovacího ventilu"
+      },
       "mixer_valve_state": {
-        "name": "Mixer valve state",
+        "name": "Stav směšovacího ventilu",
         "state": {
-          "off": "Off",
-          "closing": "Closing",
-          "opening": "Opening",
-          "unknown": "Unknown"
+          "closing": "Zavírání",
+          "off": "Vypnuto",
+          "opening": "Otevírání",
+          "unknown": "Neznámý"
         }
       },
-      "circuit_temp": { "name": "Circuit temperature" },
-      "circuit_target_temp": { "name": "Circuit target temperature" },
+      "outside_temp": {
+        "name": "Venkovní teplota"
+      },
+      "oxygen_level": {
+        "name": "Hodnota okysličení"
+      },
+      "return_temp": {
+        "name": "Teplota zpátečky"
+      },
+      "service_password": {
+        "name": "Servisní heslo"
+      },
       "total_fuel_burned": {
-        "name": "Total fuel burned",
+        "name": "Celkové množství spáleného paiva",
         "state_attributes": {
-          "burned_since_last_update": { "name": "Burned since last update, g" }
+          "burned_since_last_update": {
+            "name": "Spáleno od poslední aktualizace, g"
+          }
         }
       },
-      "ash_pan_full": { "name": "Ash pan full" }
+      "uid": {
+        "name": "UID"
+      },
+      "upper_buffer_temp": {
+        "name": "Horní teplota vyrovnávače"
+      },
+      "upper_solar_temp": {
+        "name": "Horní teplota solárů"
+      },
+      "water_heater_target": {
+        "name": "Cílová teplota ohřívače vody"
+      },
+      "water_heater_temp": {
+        "name": "Teplota ohřívače vody"
+      }
     },
     "switch": {
-      "controller_switch": { "name": "Controller switch" },
-      "water_heater_disinfection_switch": { "name": "Water heater disinfection switch" },
-      "water_heater_pump_switch": { "name": "Water heater pump switch" },
-      "weather_control_switch": { "name": "Weather control switch" },
-      "fuzzy_logic_switch": { "name": "Fuzzy logic switch" },
-      "heating_schedule_switch": { "name": "Heating schedule switch" },
-      "water_heater_schedule_switch": { "name": "Water heater schedule switch" },
-      "enable_in_summer_mode": { "name": "Enable in summer mode" },
-      "disable_pump_on_thermostat": { "name": "Disable pump on thermostat" },
-      "enable_circuit": { "name": "Enable circuit" }
+      "controller_switch": {
+        "name": "Spínač ovladače"
+      },
+      "disable_pump_on_thermostat": {
+        "name": "Vypnout čepadlo termostatem"
+      },
+      "enable_circuit": {
+        "name": "Povolit okruh"
+      },
+      "enable_in_summer_mode": {
+        "name": "Povolit v letním režimu"
+      },
+      "fuzzy_logic_switch": {
+        "name": "Přepínač fuzzy logiky"
+      },
+      "heating_schedule_switch": {
+        "name": "Přepínač rozvrhu vytápění"
+      },
+      "water_heater_disinfection_switch": {
+        "name": "Spínač dezinfekce ohřívače vody"
+      },
+      "water_heater_pump_switch": {
+        "name": "Spínač čerpadla ohřívače vody"
+      },
+      "water_heater_schedule_switch": {
+        "name": "Přepínač rozvrhu ohřívače vody"
+      },
+      "weather_control_switch": {
+        "name": "Spínač ovládání počasím"
+      }
     },
     "water_heater": {
-      "indirect_water_heater": { "name": "Indirect water heater" }
+      "indirect_water_heater": {
+        "name": "Nepřímý ohřívač vody"
+      }
     }
   },
   "exceptions": {
-    "invalid_parameter": {
-      "message": "Invalid parameter selected ({parameter})"
-    },
-    "invalid_parameter_value": {
-      "message": "Invalid value {value} for the {parameter} parameter"
-    },
-    "set_parameter_failed": {
-      "message": "Request to set a parameter failed ({parameter})"
-    },
-    "set_parameter_timeout": {
-      "message": "Request to set a parameter timed out ({parameter})"
-    },
-    "get_parameter_timeout": {
-      "message": "Request to get a parameter timed out ({parameter})"
-    },
-    "parameter_not_found": {
-      "message": "Requested parameter not found ({parameter})"
-    },
-    "schedule_not_found": {
-      "message": "Requested schedule not found ({schedule})"
-    },
-    "invalid_schedule_interval": {
-      "message": "Invalid interval selected for {schedule}. Got {start} to {end}."
+    "connection_timeout": {
+      "message": "Při pokusu o připojení vypršel časový limit ({connection})"
     },
     "device_not_found": {
-      "message": "Requested device not found ({device})"
+      "message": "Požadované zařízení nebylo nalezeno ({device})"
     },
     "device_not_ready": {
-      "message": "Device not ready ({device})"
+      "message": "Zařízení není připraveno ({device})"
     },
-    "connection_timeout": {
-      "message": "Timed out while trying to connect ({connection})"
+    "get_parameter_timeout": {
+      "message": "Požadavek na získání parametru vypršel ({parameter})"
+    },
+    "invalid_parameter": {
+      "message": "Vybrán neplatný parametr ({parameter})"
+    },
+    "invalid_parameter_value": {
+      "message": "Neplatná hodnota {value} parametru {parameter}"
+    },
+    "invalid_schedule_interval": {
+      "message": "Byl vybrán neplatný interval pro {schedule}. Od {start} do {end}."
+    },
+    "parameter_not_found": {
+      "message": "Požadovaný parametr nebyl nalezen ({parameter})"
+    },
+    "schedule_not_found": {
+      "message": "Požadovaný rozvrh nebyl nalezen ({schedule})"
+    },
+    "set_parameter_failed": {
+      "message": "Požadavek na nastavení parametru se nezdařil ({parameter})"
+    },
+    "set_parameter_timeout": {
+      "message": "Časový limit požadavku na nastavení parametru vypršel ({parameter})"
     }
   },
   "selector": {
+    "preset": {
+      "options": {
+        "day": "Den",
+        "night": "Noc"
+      }
+    },
     "schedule_type": {
       "options": {
-        "heating": "Heating",
-        "water_heater": "Water heater"
+        "heating": "Vytápění",
+        "water_heater": "Ohřev vody"
       }
     },
     "weekdays": {
       "options": {
-        "monday": "Monday",
-        "tuesday": "Tuesday",
-        "wednesday": "Wednesday",
-        "thursday": "Thursday",
-        "friday": "Friday",
-        "saturday": "Saturday",
-        "sunday": "Sunday"
-      }
-    },
-    "preset": {
-      "options": {
-        "day": "Day",
-        "night": "Night"
+        "friday": "Pátek",
+        "monday": "Pondělí",
+        "saturday": "Sobota",
+        "sunday": "Neděle",
+        "thursday": "Čtvrtek",
+        "tuesday": "Úterý",
+        "wednesday": "Středa"
       }
     }
   },
   "services": {
-    "get_parameter": {
-      "name": "Get parameter",
-      "description": "Gets device parameter.",
+    "calibrate_meter": {
+      "description": "Umožňuje kalibraci měřiče přednastavením jeho hodnoty.",
       "fields": {
-        "name": {
-          "name": "Name",
-          "description": "Name of the parameter."
-        }
-      }
-    },
-    "set_parameter": {
-      "name": "Set parameter",
-      "description": "Sets device parameter.",
-      "fields": {
-        "name": {
-          "name": "Name",
-          "description": "Name of the parameter."
-        },
         "value": {
-          "name": "Value",
-          "description": "A value that parameter will be set to."
+          "description": "Nastaví měřič na tuto hodnotu.",
+          "name": "Hodnota"
         }
-      }
+      },
+      "name": "Kalibrace měřidlo"
+    },
+    "get_parameter": {
+      "description": "Získání parametru zařízení.",
+      "fields": {
+        "name": {
+          "description": "Název parametru.",
+          "name": "Název"
+        }
+      },
+      "name": "Získat parametr"
     },
     "get_schedule": {
-      "name": "Get schedule",
-      "description": "Gets device schedule.",
+      "description": "Získaní rozvrh zařízení.",
       "fields": {
         "type": {
-          "name": "Type",
-          "description": "Type of the schedule."
+          "description": "Typ rozvrhu.",
+          "name": "Typ"
         },
         "weekdays": {
-          "name": "Weekdays",
-          "description": "Weekdays for which to get the schedules."
+          "description": "Pracovní dny, pro které chcete získat rozvrh.",
+          "name": "Pracovní dny"
         }
-      }
-    },
-    "set_schedule": {
-      "name": "Set schedule",
-      "description": "Sets device schedule.",
-      "fields": {
-        "type": {
-          "name": "Type",
-          "description": "Type of the schedule."
-        },
-        "weekdays": {
-          "name": "Weekdays",
-          "description": "Weekdays for which to set the schedules."
-        },
-        "preset": {
-          "name": "Preset",
-          "description": "Preset at scheduled time."
-        },
-        "start": {
-          "name": "Start time",
-          "description": "Time at which scheduled state will be set."
-        },
-        "end": {
-          "name": "End time",
-          "description": "Time at which scheduled state will be cleared."
-        }
-      }
+      },
+      "name": "Získat rozvrh"
     },
     "reset_meter": {
-      "name": "Reset meter",
-      "description": "Resets meter value."
+      "description": "Resetuje hodnotu měřiče.",
+      "name": "Reset měřiče"
     },
-    "calibrate_meter": {
-      "name": "Calibrate meter",
-      "description": "Allows to calibrate meter by pre-setting it's value.",
+    "set_parameter": {
+      "description": "Nastavení parametru zařízení.",
       "fields": {
+        "name": {
+          "description": "Nazev parametru.",
+          "name": "Název"
+        },
         "value": {
-          "name": "Value",
-          "description": "Sets meter to this value."
+          "description": "Hodnota, na kterou bude parametr nastaven.",
+          "name": "Hodnota"
         }
-      }
+      },
+      "name": "Nastavit parametr"
+    },
+    "set_schedule": {
+      "description": "Nastavení rozvrhu zařízení.",
+      "fields": {
+        "end": {
+          "description": "Čas, kdy bude naplánovaný stav vymazán.",
+          "name": "Konec"
+        },
+        "preset": {
+          "description": "Přednastavit v naplánovaném čase.",
+          "name": "Přednastavení"
+        },
+        "start": {
+          "description": "Čas, kdy bude naplánovaný stav nastaven.",
+          "name": "Začátek"
+        },
+        "type": {
+          "description": "Typ rozvrhu.",
+          "name": "Typ"
+        },
+        "weekdays": {
+          "description": "Pracovní dny, pro které se mají nastaví rozvrh.",
+          "name": "Pracovní dny"
+        }
+      },
+      "name": "Nastavit rozvrh"
     }
   }
 }
