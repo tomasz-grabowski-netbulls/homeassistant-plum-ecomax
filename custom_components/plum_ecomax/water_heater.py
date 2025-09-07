@@ -11,7 +11,7 @@ from homeassistant.components.water_heater import (
     STATE_ECO,
     STATE_PERFORMANCE,
     WaterHeaterEntity,
-    WaterHeaterEntityEntityDescription,
+    WaterHeaterEntityDescription,
     WaterHeaterEntityFeature,
 )
 from homeassistant.const import (
@@ -23,11 +23,10 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyplumio.filters import Filter, on_change, throttle
-from pyplumio.helpers.parameter import Parameter
-
-from custom_components.plum_ecomax.connection import EcomaxConnection
+from pyplumio.parameters import Parameter
 
 from . import PlumEcomaxConfigEntry
+from .connection import EcomaxConnection
 from .entity import EcomaxEntity, EcomaxEntityDescription
 
 TEMPERATURE_STEP: Final = 1
@@ -40,7 +39,7 @@ _LOGGER = logging.getLogger(__name__)
 
 @dataclass(frozen=True, kw_only=True)
 class EcomaxWaterHeaterEntityDescription(
-    EcomaxEntityDescription, WaterHeaterEntityEntityDescription
+    EcomaxEntityDescription, WaterHeaterEntityDescription
 ):
     """Describes an ecoMAX water heater."""
 

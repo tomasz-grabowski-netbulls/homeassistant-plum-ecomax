@@ -10,8 +10,12 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.plum_ecomax.connection import EcomaxConnection
-from custom_components.plum_ecomax.const import DOMAIN, MANUFACTURER, ModuleType
-from custom_components.plum_ecomax.entity import EcomaxEntity, EcomaxEntityDescription
+from custom_components.plum_ecomax.const import DOMAIN, ModuleType
+from custom_components.plum_ecomax.entity import (
+    MANUFACTURER,
+    EcomaxEntity,
+    EcomaxEntityDescription,
+)
 
 
 async def test_base_entity(ecomax_p: EcoMAX, config_entry: MockConfigEntry) -> None:
@@ -32,7 +36,9 @@ async def test_base_entity(ecomax_p: EcoMAX, config_entry: MockConfigEntry) -> N
     )
 
     # Test adding entity to hass.
-    with patch.object(mock_connection.device, "subscribe") as mock_subscribe:
+    with patch.object(
+        mock_connection.device, "subscribe", create=True
+    ) as mock_subscribe:
         await entity.async_added_to_hass()
 
     mock_filter.assert_called_once()

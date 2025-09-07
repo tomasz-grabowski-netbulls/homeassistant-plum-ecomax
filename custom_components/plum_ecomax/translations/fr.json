@@ -92,11 +92,6 @@
         "name": "Pompe du chauffe eau"
       }
     },
-    "button": {
-      "detect_sub_devices": {
-        "name": "Détecter les sous-appareils"
-      }
-    },
     "climate": {
       "thermostat": {
         "name": "Thermostat",
@@ -181,9 +176,6 @@
       }
     },
     "sensor": {
-      "ash_pan_full": {
-        "name": "Cendrier plein"
-      },
       "boiler_load": {
         "name": "Charge de la chaudière"
       },
@@ -279,18 +271,6 @@
       "mixer_temp": {
         "name": "Température du mélanger"
       },
-      "mixer_valve_opening_percentage": {
-        "name": "Pourcentage d'ouverture de la vane du mélangeur"
-      },
-      "mixer_valve_state": {
-        "name": "État de la vanne du mélangeur",
-        "state": {
-          "closing": "Fermeture",
-          "off": "Off",
-          "opening": "Ouverture",
-          "unknown": "Inconnu"
-        }
-      },
       "outside_temp": {
         "name": "Température extérieure"
       },
@@ -375,32 +355,193 @@
     "device_not_ready": {
       "message": "L'appareil n'est pas prêt ({device})"
     },
-    "get_parameter_timeout": {
-      "message": "La demande d'obtention d'un paramètre a expiré ({parameter})"
-    },
-    "invalid_parameter": {
-      "message": "Paramètre sélectionné invalide ({parameter})"
+    "property_not_writable": {
+      "message": "Impossible de modifier la propriété \"{property}\" en lecture seule"
     },
     "invalid_parameter_value": {
-      "message": "Valeur {value} invalide  pour le paramètre {parameter}"
+      "message": "Valeur {value} invalide pour le paramètre \"{parameter}\""
     },
     "invalid_schedule_interval": {
-      "message": "Interval sélectionné invalide pour {schedule}. De {start} à {end}."
+      "message": "Interval sélectionné invalide pour \"{schedule}\". De {start} à {end}."
     },
     "parameter_not_found": {
-      "message": "Le paramètre demandé n'a pas été trouvé ({parameter})"
+      "message": "Le paramètre \"{parameter}\" demandé n'a pas été trouvé"
     },
     "schedule_not_found": {
-      "message": "La programmation demandée n'a pas été trouvée ({schedule})"
-    },
-    "set_parameter_failed": {
-      "message": "La définition d'un paramètre a échoué ({parameter})"
+      "message": "La programmation \"{schedule}\" demandée n'a pas été trouvée"
     },
     "set_parameter_timeout": {
-      "message": "La définition d'un paramètre a expiré ({parameter})"
+      "message": "La définition d'un paramètre \"{parameter}\" a expiré"
+    },
+    "device_disconnected": {
+      "message": "The selected device was disconnected ({device})"
+    },
+    "unsupported_device": {
+      "message": "The selected device is invalid or not supported ({device})"
+    },
+    "entity_not_found": {
+      "message": "The selected entity \"{entity}\" was not found on the device ({device})"
+    }
+  },
+  "options": {
+    "step": {
+      "add_entity": {
+        "title": "Select a source device",
+        "data": {
+          "source_device": "Source device"
+        }
+      },
+      "edit_entity": {
+        "title": "Select an entity to edit",
+        "data": {
+          "entity_id": "Entity"
+        }
+      },
+      "remove_entity": {
+        "title": "Select an entity to remove",
+        "data": {
+          "entity_id": "Entity"
+        }
+      },
+      "entity_details": {
+        "data": {
+          "device_class": "Device class",
+          "key": "Key",
+          "mode": "Mode",
+          "name": "Name",
+          "state_class": "State class",
+          "unit_of_measurement": "Unit of measurement",
+          "update_interval": "Update interval"
+        },
+        "title": "Edit {platform} details"
+      },
+      "entity_type": {
+        "menu_options": {
+          "add_binary_sensor": "Binary sensor",
+          "add_number": "Number",
+          "add_sensor": "Sensor",
+          "add_switch": "Switch"
+        },
+        "title": "Select entity type"
+      },
+      "init": {
+        "menu_options": {
+          "add_entity": "Add a new entity",
+          "edit_entity": "Edit an entity",
+          "remove_entity": "Remove an entity",
+          "rediscover_devices": "Rediscover connected devices"
+        }
+      }
+    },
+    "abort": {
+      "no_entities_to_edit_or_remove": "No entities to edit or remove, you'll need to add some first.",
+      "no_entities_to_add": "No entities to add, all available entities have been added already.",
+      "entry_not_ready": "Config entry not ready, please wait and try again."
     }
   },
   "selector": {
+    "binary_sensor_device_class": {
+      "options": {
+        "battery": "Battery",
+        "battery_charging": "Charging",
+        "carbon_monoxide": "Carbon monoxide",
+        "cold": "Cold",
+        "connectivity": "Connectivity",
+        "door": "Door",
+        "garage_door": "Garage door",
+        "gas": "Gas",
+        "heat": "Heat",
+        "light": "Light",
+        "lock": "Lock",
+        "moisture": "Moisture",
+        "motion": "Motion",
+        "moving": "Moving",
+        "occupancy": "Occupancy",
+        "opening": "Opening",
+        "plug": "Plug",
+        "power": "Power",
+        "presence": "Presence",
+        "problem": "Problem",
+        "running": "Running",
+        "safety": "Safety",
+        "smoke": "Smoke",
+        "sound": "Sound",
+        "update": "Update",
+        "vibration": "Vibration",
+        "window": "Window"
+      }
+    },
+    "number_device_class": {
+      "options": {
+        "absolute_humidity": "Absolute humidity",
+        "apparent_power": "Apparent power",
+        "area": "Area",
+        "aqi": "Air quality index",
+        "atmospheric_pressure": "Atmospheric pressure",
+        "battery": "Battery",
+        "blood_glucose_concentration": "Blood glucose concentration",
+        "carbon_dioxide": "Carbon dioxide",
+        "carbon_monoxide": "Carbon monoxide",
+        "conductivity": "Conductivity",
+        "current": "Current",
+        "data_rate": "Data rate",
+        "data_size": "Data size",
+        "distance": "Distance",
+        "duration": "Duration",
+        "energy": "Energy",
+        "energy_distance": "Energy distance",
+        "energy_storage": "Stored energy",
+        "frequency": "Frequency",
+        "gas": "Gas",
+        "humidity": "Humidity",
+        "illuminance": "Illuminance",
+        "irradiance": "Irradiance",
+        "moisture": "Moisture",
+        "monetary": "Balance",
+        "nitrogen_dioxide": "Nitrogen dioxide",
+        "nitrogen_monoxide": "Nitrogen monoxide",
+        "nitrous_oxide": "Nitrous oxide",
+        "ozone": "Ozone",
+        "ph": "pH",
+        "pm1": "PM1",
+        "pm10": "PM10",
+        "pm25": "PM2.5",
+        "power": "Power",
+        "power_factor": "Power factor",
+        "precipitation": "Precipitation",
+        "precipitation_intensity": "Precipitation intensity",
+        "pressure": "Pressure",
+        "reactive_power": "Reactive power",
+        "reactive_energy": "Reactive energy",
+        "signal_strength": "Signal strength",
+        "sound_pressure": "Sound pressure",
+        "speed": "Speed",
+        "sulphur_dioxide": "Sulphur dioxide",
+        "temperature": "Temperature",
+        "volatile_organic_compounds": "VOCs",
+        "volatile_organic_compounds_parts": "VOCs (parts)",
+        "voltage": "Voltage",
+        "volume": "Volume",
+        "volume_flow_rate": "Volume flow rate",
+        "volume_storage": "Stored volume",
+        "water": "Water",
+        "weight": "Weight",
+        "wind_speed": "Wind speed",
+        "wind_direction": "Wind direction"
+      }
+    },
+    "number_mode": {
+      "options": {
+        "auto": "Auto",
+        "box": "Box",
+        "slider": "Slider"
+      }
+    },
+    "number_unit_of_measurement": {
+      "options": {
+        "none": "No unit of measurement"
+      }
+    },
     "preset": {
       "options": {
         "day": "Jour",
@@ -411,6 +552,80 @@
       "options": {
         "heating": "Chauffage",
         "water_heater": "Chauffe-eau"
+      }
+    },
+    "sensor_device_class": {
+      "options": {
+        "absolute_humidity": "Absolute humidity",
+        "apparent_power": "Apparent power",
+        "area": "Area",
+        "aqi": "Air quality index",
+        "atmospheric_pressure": "Atmospheric pressure",
+        "battery": "Battery",
+        "blood_glucose_concentration": "Blood glucose concentration",
+        "carbon_dioxide": "Carbon dioxide",
+        "carbon_monoxide": "Carbon monoxide",
+        "conductivity": "Conductivity",
+        "current": "Current",
+        "data_rate": "Data rate",
+        "data_size": "Data size",
+        "date": "Date",
+        "distance": "Distance",
+        "duration": "Duration",
+        "energy": "Energy",
+        "energy_distance": "Energy distance",
+        "energy_storage": "Stored energy",
+        "frequency": "Frequency",
+        "gas": "Gas",
+        "humidity": "Humidity",
+        "illuminance": "Illuminance",
+        "irradiance": "Irradiance",
+        "moisture": "Moisture",
+        "monetary": "Balance",
+        "nitrogen_dioxide": "Nitrogen dioxide",
+        "nitrogen_monoxide": "Nitrogen monoxide",
+        "nitrous_oxide": "Nitrous oxide",
+        "ozone": "Ozone",
+        "ph": "pH",
+        "pm1": "PM1",
+        "pm10": "PM10",
+        "pm25": "PM2.5",
+        "power": "Power",
+        "power_factor": "Power factor",
+        "precipitation": "Precipitation",
+        "precipitation_intensity": "Precipitation intensity",
+        "pressure": "Pressure",
+        "reactive_power": "Reactive power",
+        "reactive_energy": "Reactive energy",
+        "signal_strength": "Signal strength",
+        "sound_pressure": "Sound pressure",
+        "speed": "Speed",
+        "sulphur_dioxide": "Sulphur dioxide",
+        "temperature": "Temperature",
+        "timestamp": "Timestamp",
+        "volatile_organic_compounds": "VOCs",
+        "volatile_organic_compounds_parts": "VOCs (parts)",
+        "voltage": "Voltage",
+        "volume": "Volume",
+        "volume_flow_rate": "Volume flow rate",
+        "volume_storage": "Stored volume",
+        "water": "Water",
+        "weight": "Weight",
+        "wind_speed": "Wind speed",
+        "wind_direction": "Wind direction"
+      }
+    },
+    "sensor_state_class": {
+      "options": {
+        "measurement": "Measurement",
+        "measurement_angle": "Measurement angle",
+        "total": "Total",
+        "total_increasing": "Total increasing"
+      }
+    },
+    "sensor_unit_of_measurement": {
+      "options": {
+        "none": "No unit of measurement"
       }
     },
     "weekdays": {
@@ -503,6 +718,18 @@
         }
       },
       "name": "Définir la programmation"
+    }
+  },
+  "system_health": {
+    "info": {
+      "pyplumio_version": "PyPlumIO version",
+      "received_frames": "Received frames",
+      "sent_frames": "Sent frames",
+      "failed_frames": "Failed frames",
+      "failure_rate": "Failure rate",
+      "connected_since": "Connected since",
+      "connection_losses": "Connection losses",
+      "custom_entities": "Custom entities"
     }
   }
 }

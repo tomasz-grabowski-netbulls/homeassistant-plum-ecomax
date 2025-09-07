@@ -21,21 +21,21 @@
           "baudrate": "Скорость передачи",
           "device": "Путь к устройству"
         },
-        "title": "Serial settings"
+        "title": "Настройки последовательного порта"
       },
       "tcp": {
         "data": {
           "host": "IP-адрес/домен",
           "port": "Порт"
         },
-        "title": "Network settings"
+        "title": "Настройки сетевого подключения"
       },
       "user": {
         "menu_options": {
           "serial": "Подключиться через последовательный порт (RS-485)",
           "tcp": "Подключиться по сети (TCP)"
         },
-        "title": "Choose a connection type"
+        "title": "Выберите тип соединения"
       }
     }
   },
@@ -92,11 +92,6 @@
         "name": "Насос водонагревателя"
       }
     },
-    "button": {
-      "detect_sub_devices": {
-        "name": "Определить модули"
-      }
-    },
     "climate": {
       "thermostat": {
         "name": "Термостат",
@@ -106,7 +101,7 @@
               "airing": "Проветривание",
               "antifreeze": "Антизамерзание",
               "holidays": "Отпуск",
-              "party": "Party",
+              "party": "Праздник",
               "schedule": "Расписание"
             }
           }
@@ -181,9 +176,6 @@
       }
     },
     "sensor": {
-      "ash_pan_full": {
-        "name": "Заполненность зольного ящика"
-      },
       "boiler_load": {
         "name": "Нагрузка"
       },
@@ -197,25 +189,25 @@
         "name": "Температура контура"
       },
       "connected_modules": {
-        "name": "Connected modules",
+        "name": "Подключенные модули",
         "state_attributes": {
           "ecolambda": {
-            "name": "ecoLAMBDA software version"
+            "name": "Версия ПО ecoLAMBDA"
           },
           "ecoster": {
-            "name": "ecoSTER software version"
+            "name": "Версия ПО ecoSTER"
           },
           "module_a": {
-            "name": "Module A software version"
+            "name": "Версия ПО модуля A"
           },
           "module_b": {
-            "name": "Module B software version"
+            "name": "Версия ПО модуля B"
           },
           "module_c": {
-            "name": "Module C software version"
+            "name": "Версия ПО модуля C"
           },
           "panel": {
-            "name": "Panel software version"
+            "name": "Версия ПО панели управления"
           }
         }
       },
@@ -278,18 +270,6 @@
       },
       "mixer_temp": {
         "name": "Температура миксера"
-      },
-      "mixer_valve_opening_percentage": {
-        "name": "Mixer valve opening percentage"
-      },
-      "mixer_valve_state": {
-        "name": "Mixer valve state",
-        "state": {
-          "closing": "Closing",
-          "off": "Off",
-          "opening": "Opening",
-          "unknown": "Unknown"
-        }
       },
       "outside_temp": {
         "name": "Температура на улице"
@@ -367,40 +347,204 @@
   },
   "exceptions": {
     "connection_timeout": {
-      "message": "Timed out while trying to connect ({connection})"
+      "message": "Таймаут при попытке подключения ({connection})"
     },
     "device_not_found": {
-      "message": "Requested device not found ({device})"
+      "message": "Устройство не найдено ({device})"
     },
     "device_not_ready": {
-      "message": "Device not ready ({device})"
+      "message": "Устройство не готово ({device})"
     },
-    "get_parameter_timeout": {
-      "message": "Request to get a parameter timed out ({parameter})"
-    },
-    "invalid_parameter": {
-      "message": "Invalid parameter selected ({parameter})"
+    "property_not_writable": {
+      "message": "Невозможно изменить параметр только для чтения\"{property}\""
     },
     "invalid_parameter_value": {
-      "message": "Invalid value {value} for the {parameter} parameter"
+      "message": "Неверное значение \"{value}\" параметра \"{parameter}\""
     },
     "invalid_schedule_interval": {
-      "message": "Invalid interval selected for {schedule}. Got {start} to {end}."
+      "message": "Invalid interval for \"{schedule}\". Got {start} to {end}."
     },
     "parameter_not_found": {
-      "message": "Requested parameter not found ({parameter})"
+      "message": "Запрошенный параметр \"{parameter}\" не найден"
+    },
+    "parameter_not_found_with_suggestion": {
+      "message": "Запрошенный параметр \"{parameter}\" не найден, возможно Вы искали \"{suggestion}\"?"
     },
     "schedule_not_found": {
-      "message": "Requested schedule not found ({schedule})"
-    },
-    "set_parameter_failed": {
-      "message": "Request to set a parameter failed ({parameter})"
+      "message": "Запрошенное расписание \"{schedule}\" не найдено"
     },
     "set_parameter_timeout": {
-      "message": "Request to set a parameter timed out ({parameter})"
+      "message": "Таймаут запроса на изменение параметра \"{parameter}\""
+    },
+    "device_disconnected": {
+      "message": "Выбранное устройство прервало подключение ({device})"
+    },
+    "unsupported_device": {
+      "message": "Выбраное устройство неверно или не поддерживается ({device})"
+    },
+    "entity_not_found": {
+      "message": "Выбранный объект \"{entity}\" не найден на устройстве ({device})"
+    }
+  },
+  "options": {
+    "step": {
+      "add_entity": {
+        "title": "Выберите устройство",
+        "data": {
+          "source_device": "Устройство"
+        }
+      },
+      "edit_entity": {
+        "title": "Выберите объект",
+        "data": {
+          "entity_id": "Объект"
+        }
+      },
+      "remove_entity": {
+        "title": "Выберите объект для удаления",
+        "data": {
+          "entity_id": "Объект"
+        }
+      },
+      "entity_details": {
+        "data": {
+          "device_class": "Класс устройства",
+          "key": "ID",
+          "mode": "Режим",
+          "name": "Название",
+          "state_class": "Класс состояния",
+          "unit_of_measurement": "Единица измерения",
+          "update_interval": "Интервал обновления"
+        },
+        "title": "Редактирование {platform}"
+      },
+      "entity_type": {
+        "menu_options": {
+          "add_binary_sensor": "Бинарный сенсор",
+          "add_number": "Номер",
+          "add_sensor": "Сенсор",
+          "add_switch": "Выключатель"
+        },
+        "title": "Выберите тип объекта"
+      },
+      "init": {
+        "menu_options": {
+          "add_entity": "Добавить новый объект",
+          "edit_entity": "Редактировать объект",
+          "remove_entity": "Удалить объект",
+          "rediscover_devices": "Повторить обнаружение устройств"
+        }
+      }
+    },
+    "abort": {
+      "no_entities_to_edit_or_remove": "Нет объектов для удаления или редактирования, добавьте несколько.",
+      "no_entities_to_add": "Нет объектов для добавления, все доступные объекты уже были добавлены.",
+      "entry_not_ready": "Запись конфигурации не готова, пожалуйста, подождите и попробуйте ещё раз."
     }
   },
   "selector": {
+    "binary_sensor_device_class": {
+      "options": {
+        "battery": "Батарея",
+        "battery_charging": "Зарядка",
+        "carbon_monoxide": "Монооксид углерода",
+        "cold": "Холод",
+        "connectivity": "Связь",
+        "door": "Дверь",
+        "garage_door": "Гаражные ворота",
+        "gas": "Газ",
+        "heat": "Тепло",
+        "light": "Свет",
+        "lock": "Замок",
+        "moisture": "Влага",
+        "motion": "Движение",
+        "moving": "Перемещение",
+        "occupancy": "Занятость",
+        "opening": "Открытие",
+        "plug": "Подключение",
+        "power": "Питание",
+        "presence": "Присутствие",
+        "problem": "Проблема",
+        "running": "Работа",
+        "safety": "Безопастность",
+        "smoke": "Дым",
+        "sound": "Звук",
+        "update": "Обновление",
+        "vibration": "Вибрация",
+        "window": "Окно"
+      }
+    },
+    "number_device_class": {
+      "options": {
+        "absolute_humidity": "Абсолютная влажность",
+        "apparent_power": "Мощность",
+        "area": "Площадь",
+        "aqi": "Индекс качества воздуха",
+        "atmospheric_pressure": "Атмосферное давление",
+        "battery": "Батарея",
+        "blood_glucose_concentration": "Концентрация глюкозы в крови",
+        "carbon_dioxide": "Углекислый газ",
+        "carbon_monoxide": "Монооксид углерода",
+        "conductivity": "Проводимость",
+        "current": "Сила тока",
+        "data_rate": "Скорость передачи данных",
+        "data_size": "Размер данных",
+        "distance": "Расстояние",
+        "duration": "Продолжительность",
+        "energy": "Энергия",
+        "energy_distance": "Энергия на расстояние",
+        "energy_storage": "Накопленная энергия",
+        "frequency": "Частота",
+        "gas": "Газ",
+        "humidity": "Влажность",
+        "illuminance": "Освещенность",
+        "irradiance": "Излучение",
+        "moisture": "Влага",
+        "monetary": "Денежный баланс",
+        "nitrogen_dioxide": "Диоксид азота",
+        "nitrogen_monoxide": "Монооксид азота",
+        "nitrous_oxide": "Оксид озота",
+        "ozone": "Озон",
+        "ph": "pH",
+        "pm1": "PM1",
+        "pm10": "PM10",
+        "pm25": "PM2.5",
+        "power": "Полная мощность",
+        "power_factor": "Коэффициент мощности",
+        "precipitation": "Осадки",
+        "precipitation_intensity": "Интенсивность осадков",
+        "pressure": "Давление",
+        "reactive_power": "Реактивная мощность",
+        "reactive_energy": "Реактивная энергия",
+        "signal_strength": "Уровень сигнала",
+        "sound_pressure": "Звуковое давление",
+        "speed": "Скорость",
+        "sulphur_dioxide": "Диоксид серы",
+        "temperature": "Температура",
+        "volatile_organic_compounds": "Летучие органические вещества",
+        "volatile_organic_compounds_parts": "Части летучих органических веществ",
+        "voltage": "Напряжение",
+        "volume": "Объем",
+        "volume_flow_rate": "Объемный расход",
+        "volume_storage": "Накопленый объем",
+        "water": "Вода",
+        "weight": "Вес",
+        "wind_speed": "Скорость ветра",
+        "wind_direction": "Направление ветра"
+      }
+    },
+    "number_mode": {
+      "options": {
+        "auto": "Авто",
+        "box": "Поле",
+        "slider": "Слайдер"
+      }
+    },
+    "number_unit_of_measurement": {
+      "options": {
+        "none": "Единица измерения не указана"
+      }
+    },
     "preset": {
       "options": {
         "day": "День",
@@ -411,6 +555,80 @@
       "options": {
         "heating": "Отопление",
         "water_heater": "Водонагреватель"
+      }
+    },
+    "sensor_device_class": {
+      "options": {
+        "absolute_humidity": "Абсолютная влажность",
+        "apparent_power": "Мощность",
+        "area": "Площадь",
+        "aqi": "Индекс качества воздуха",
+        "atmospheric_pressure": "Атмосферное давление",
+        "battery": "Батарея",
+        "blood_glucose_concentration": "Концентрация глюкозы в крови",
+        "carbon_dioxide": "Углекислый газ",
+        "carbon_monoxide": "Монооксид углерода",
+        "conductivity": "Проводимость",
+        "current": "Сила тока",
+        "data_rate": "Скорость передачи данных",
+        "data_size": "Размер данных",
+        "date": "Дата",
+        "distance": "Расстояние",
+        "duration": "Продолжительность",
+        "energy": "Энергия",
+        "energy_distance": "Энергия на расстояние",
+        "energy_storage": "Накопленная энергия",
+        "frequency": "Частота",
+        "gas": "Газ",
+        "humidity": "Влажность",
+        "illuminance": "Освещенность",
+        "irradiance": "Излучение",
+        "moisture": "Влага",
+        "monetary": "Денежный баланс",
+        "nitrogen_dioxide": "Диоксид азота",
+        "nitrogen_monoxide": "Монооксид азота",
+        "nitrous_oxide": "Оксид озота",
+        "ozone": "Озон",
+        "ph": "pH",
+        "pm1": "PM1",
+        "pm10": "PM10",
+        "pm25": "PM2.5",
+        "power": "Полная мощность",
+        "power_factor": "Коэффициент мощности",
+        "precipitation": "Осадки",
+        "precipitation_intensity": "Интенсивность осадков",
+        "pressure": "Давление",
+        "reactive_power": "Реактивная мощность",
+        "reactive_energy": "Реактивная энергия",
+        "signal_strength": "Уровень сигнала",
+        "sound_pressure": "Звуковое давление",
+        "speed": "Скорость",
+        "sulphur_dioxide": "Диоксид серы",
+        "temperature": "Температура",
+        "timestamp": "Временная метка",
+        "volatile_organic_compounds": "Летучие органические вещества",
+        "volatile_organic_compounds_parts": "Летучих органические вещества (части)",
+        "voltage": "Напряжение",
+        "volume": "Объем",
+        "volume_flow_rate": "Объемный расход",
+        "volume_storage": "Накопленый объем",
+        "water": "Вода",
+        "weight": "Вес",
+        "wind_speed": "Скорость ветра",
+        "wind_direction": "Направление ветра"
+      }
+    },
+    "sensor_state_class": {
+      "options": {
+        "measurement": "Измерение",
+        "measurement_angle": "Угол измерения",
+        "total": "Суммарно",
+        "total_increasing": "Общее увеличение"
+      }
+    },
+    "sensor_unit_of_measurement": {
+      "options": {
+        "none": "Единица измерения не указана"
       }
     },
     "weekdays": {
@@ -503,6 +721,18 @@
         }
       },
       "name": "Установить расписание"
+    }
+  },
+  "system_health": {
+    "info": {
+      "pyplumio_version": "Версия PyPlumIO",
+      "received_frames": "Получено кадров",
+      "sent_frames": "Отправлено кадров",
+      "failed_frames": "Неверных кадров",
+      "failure_rate": "Процент ошибок",
+      "connected_since": "Подключено",
+      "connection_losses": "Потерь подключения",
+      "custom_entities": "Добавленных объектов"
     }
   }
 }

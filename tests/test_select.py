@@ -11,9 +11,9 @@ from homeassistant.components.select.const import (
 from homeassistant.const import ATTR_ENTITY_ID, ATTR_FRIENDLY_NAME, STATE_OFF
 from homeassistant.core import HomeAssistant, State
 from homeassistant.helpers import entity_registry as er
-from pyplumio.helpers.parameter import ParameterValues
-from pyplumio.structures.ecomax_parameters import EcomaxNumber, EcomaxNumberDescription
-from pyplumio.structures.mixer_parameters import MixerNumber, MixerNumberDescription
+from pyplumio.parameters import ParameterValues
+from pyplumio.parameters.ecomax import EcomaxNumber, EcomaxNumberDescription
+from pyplumio.parameters.mixer import MixerNumber, MixerNumberDescription
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -26,6 +26,7 @@ from custom_components.plum_ecomax.select import (
     STATE_SUMMER,
     STATE_WINTER,
 )
+from tests.conftest import dispatch_value
 
 
 @pytest.fixture(autouse=True)
@@ -91,7 +92,8 @@ async def test_summer_mode_select(
     options = state.attributes[ATTR_OPTIONS]
 
     # Dispatch new value.
-    await connection.device.dispatch(
+    await dispatch_value(
+        connection.device,
         summer_mode_select_key,
         EcomaxNumber(
             device=connection.device,

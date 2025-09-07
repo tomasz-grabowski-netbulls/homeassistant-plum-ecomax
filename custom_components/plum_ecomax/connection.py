@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Mapping
+from contextlib import suppress
 from functools import cached_property
 import logging
 import math
@@ -17,7 +19,6 @@ import pyplumio
 from pyplumio.connection import Connection
 from pyplumio.const import FrameType, ProductType
 from pyplumio.devices import PhysicalDevice
-from pyplumio.structures.ecomax_parameters import ATTR_ECOMAX_PARAMETERS
 from pyplumio.structures.mixer_parameters import ATTR_MIXER_PARAMETERS
 from pyplumio.structures.mixer_sensors import ATTR_MIXERS_CONNECTED
 from pyplumio.structures.temperatures import ATTR_WATER_HEATER_TEMP
@@ -25,10 +26,8 @@ from pyplumio.structures.thermostat_parameters import ATTR_THERMOSTAT_PARAMETERS
 from pyplumio.structures.thermostat_sensors import ATTR_THERMOSTATS_CONNECTED
 
 from .const import (
-    ATTR_LOADED,
     ATTR_MIXERS,
     ATTR_REGDATA,
-    ATTR_SENSORS,
     ATTR_THERMOSTATS,
     ATTR_WATER_HEATER,
     CONF_BAUDRATE,
@@ -49,8 +48,15 @@ from .const import (
     DeviceType,
 )
 
+ATTR_SETUP: Final = "setup"
+ATTR_SENSORS: Final = "sensors"
+
 DEFAULT_TIMEOUT: Final = 15
 DEFAULT_RETRIES: Final = 5
+
+WAIT_FOR_DEVICE_SECONDS: Final = 30
+WAIT_FOR_SETUP_SECONDS: Final = 15
+FORCE_CLOSE_AFTER_SECONDS: Final = 10
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -122,12 +128,18 @@ class EcomaxConnection:
     _hass: HomeAssistant
     entry: ConfigEntry
 
+    _request_cache: dict[str, bool]
+    _request_locks: dict[str, asyncio.Lock]
+
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry, connection: Connection):
         """Initialize a new ecoMAX connection."""
         self._connection = connection
         self._device = None
         self._hass = hass
         self.entry = entry
+
+        self._request_cache = {}
+        self._request_locks = {}
 
     def __getattr__(self, name: str) -> Any:
         """Proxy calls to the underlying connection handler class."""
@@ -140,66 +152,54 @@ class EcomaxConnection:
         """Set up ecoMAX connection."""
         await self._connection.connect()
         device: PhysicalDevice = await self.get(
-            DeviceType.ECOMAX, timeout=DEFAULT_TIMEOUT
+            DeviceType.ECOMAX, timeout=WAIT_FOR_DEVICE_SECONDS
         )
-        for required in (ATTR_LOADED, ATTR_SENSORS, ATTR_ECOMAX_PARAMETERS):
-            await device.wait_for(required, timeout=DEFAULT_TIMEOUT)
-
+        await device.wait_for(ATTR_SETUP, timeout=WAIT_FOR_SETUP_SECONDS)
         self._device = device
+
+    async def _request_with_cache(self, name: str, frame_type: FrameType) -> bool:
+        """Make request and cache the result."""
+        request_lock = self._request_locks.setdefault(name, asyncio.Lock())
+        async with request_lock:
+            if name not in self._request_cache:
+                try:
+                    await self.device.request(
+                        name=name,
+                        frame_type=frame_type,
+                        retries=DEFAULT_RETRIES,
+                        timeout=DEFAULT_TIMEOUT,
+                    )
+                    self._request_cache[name] = True
+                except pyplumio.RequestError:
+                    _LOGGER.warning("Request for '%s' with %r failed", name, frame_type)
+                    self._request_cache[name] = False
+
+        return self._request_cache[name]
 
     async def async_setup_thermostats(self) -> bool:
         """Set up thermostats."""
-        try:
-            await self.device.request(
-                ATTR_THERMOSTAT_PARAMETERS,
-                FrameType.REQUEST_THERMOSTAT_PARAMETERS,
-                retries=DEFAULT_RETRIES,
-                timeout=DEFAULT_TIMEOUT,
-            )
-            return True
-        except ValueError:
-            _LOGGER.error("Timed out while trying to setup thermostats.")
-            return False
+        return await self._request_with_cache(
+            ATTR_THERMOSTAT_PARAMETERS, FrameType.REQUEST_THERMOSTAT_PARAMETERS
+        )
 
     async def async_setup_mixers(self) -> bool:
         """Set up mixers."""
-        try:
-            await self.device.request(
-                ATTR_MIXER_PARAMETERS,
-                FrameType.REQUEST_MIXER_PARAMETERS,
-                retries=DEFAULT_RETRIES,
-                timeout=DEFAULT_TIMEOUT,
-            )
-            return True
-        except ValueError:
-            _LOGGER.error("Timed out while trying to setup mixers.")
-            return False
+        return await self._request_with_cache(
+            ATTR_MIXER_PARAMETERS, FrameType.REQUEST_MIXER_PARAMETERS
+        )
 
     async def async_setup_regdata(self) -> bool:
         """Set up regulator data."""
-        try:
-            await self.device.request(
-                ATTR_REGDATA,
-                FrameType.REQUEST_REGULATOR_DATA_SCHEMA,
-                retries=DEFAULT_RETRIES,
-                timeout=DEFAULT_TIMEOUT,
-            )
-            return True
-        except ValueError:
-            _LOGGER.error("Timed out while trying to setup regulator data.")
-            return False
-
-    async def async_update_sub_devices(self) -> None:
-        """Update sub-devices."""
-        data = dict(self.entry.data)
-        data[CONF_SUB_DEVICES] = await async_get_sub_devices(self.device)
-        self._hass.config_entries.async_update_entry(self.entry, data=data)
-        _LOGGER.info("Updated sub-devices, reloading config entry...")
-        await self._hass.config_entries.async_reload(self.entry.entry_id)
+        return await self._request_with_cache(
+            ATTR_REGDATA, FrameType.REQUEST_REGULATOR_DATA_SCHEMA
+        )
 
     async def async_close(self) -> None:
         """Close ecoMAX connection."""
-        await self._connection.close()
+        with suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(
+                self._connection.close(), timeout=FORCE_CLOSE_AFTER_SECONDS
+            )
 
     @property
     def device(self) -> PhysicalDevice:

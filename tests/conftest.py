@@ -2,44 +2,44 @@
 
 import asyncio
 from collections.abc import Generator
-from typing import Final
+import json
+from typing import Any, Final, cast
 from unittest.mock import AsyncMock, Mock, patch
 
 from homeassistant.core import HomeAssistant
 from pyplumio.connection import Connection
 from pyplumio.const import DeviceState, ProductType, UnitOfMeasurement
+from pyplumio.devices import PhysicalDevice, VirtualDevice
 from pyplumio.devices.ecomax import EcoMAX
 from pyplumio.devices.mixer import Mixer
 from pyplumio.devices.thermostat import Thermostat
-from pyplumio.helpers.parameter import ParameterValues
-from pyplumio.structures.ecomax_parameters import (
-    ATTR_ECOMAX_CONTROL,
+from pyplumio.parameters import ParameterValues
+from pyplumio.parameters.ecomax import (
     EcomaxNumber,
     EcomaxNumberDescription,
     EcomaxSwitch,
     EcomaxSwitchDescription,
 )
-from pyplumio.structures.mixer_parameters import (
+from pyplumio.parameters.mixer import (
     MixerNumber,
     MixerNumberDescription,
     MixerSwitch,
     MixerSwitchDescription,
 )
+from pyplumio.parameters.thermostat import ThermostatNumber, ThermostatNumberDescription
+from pyplumio.structures.ecomax_parameters import ATTR_ECOMAX_CONTROL
 from pyplumio.structures.modules import ConnectedModules
 from pyplumio.structures.network_info import NetworkInfo
 from pyplumio.structures.product_info import ProductInfo
-from pyplumio.structures.thermostat_parameters import (
-    ThermostatNumber,
-    ThermostatNumberDescription,
-)
 import pytest
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.common import MockConfigEntry, load_fixture
 
 from custom_components.plum_ecomax.connection import EcomaxConnection
 from custom_components.plum_ecomax.const import (
     ATTR_MIXERS,
     ATTR_PRODUCT,
     ATTR_REGDATA,
+    ATTR_THERMOSTATS,
     CONF_BAUDRATE,
     CONF_CONNECTION_TYPE,
     CONF_DEVICE,
@@ -57,12 +57,22 @@ from custom_components.plum_ecomax.const import (
     DEFAULT_DEVICE,
     DEFAULT_PORT,
     DOMAIN,
-    ProductModel,
 )
-from tests.common import load_regdata_fixture
 
 TITLE: Final = "ecoMAX"
 HOST: Final = "localhost"
+
+FLOAT_TOLERANCE: Final = 1e-6
+
+
+def keys_to_int(data: dict[str, Any]) -> dict[int, Any]:
+    """Cast dict keys to int."""
+    return {int(k): v for k, v in data.items()}
+
+
+def load_regdata_fixture(filename: str):
+    """Load regdata fixture."""
+    return json.loads(load_fixture(filename), object_hook=keys_to_int)
 
 
 @pytest.fixture(autouse=True)
@@ -141,7 +151,14 @@ def fixture_serial_config_data(serial_user_input, config_data):
 async def setup_integration():
     """Set up the integration."""
 
-    async def setup_entry(hass: HomeAssistant, config_entry: MockConfigEntry):
+    async def setup_entry(
+        hass: HomeAssistant,
+        config_entry: MockConfigEntry,
+        options: dict[str, Any] | None = None,
+    ):
+        if options:
+            hass.config_entries.async_update_entry(config_entry, options=options)
+
         config_entry.add_to_hass(hass)
         assert await hass.config_entries.async_setup(config_entry.entry_id)
         await hass.async_block_till_done()
@@ -185,10 +202,16 @@ def connected():
         yield
 
 
+class MutableEcoMAX(EcoMAX):
+    """Allows to set otherwise properties readonly due to __slots__."""
+
+    __slots__ = ("__dict__",)
+
+
 @pytest.fixture(name="ecomax_base")
-def fixture_ecomax_base() -> Generator[EcoMAX, None, None]:
+def fixture_ecomax_base() -> Generator[EcoMAX]:
     """Return base ecoMAX device with no data."""
-    ecomax = EcoMAX(queue=Mock(), network=NetworkInfo())
+    ecomax = MutableEcoMAX(queue=Mock(), network=NetworkInfo())
     with (
         patch(
             "custom_components.plum_ecomax.connection.EcomaxConnection.device", ecomax
@@ -330,7 +353,7 @@ def fixture_ecomax_p(ecomax_common: EcoMAX):
                 values=ParameterValues(value=0, min_value=0, max_value=1),
                 description=EcomaxNumberDescription(
                     "fuel_calorific_value",
-                    multiplier=0.1,
+                    step=0.1,
                     unit_of_measurement=UnitOfMeasurement.KILO_WATT_HOUR_PER_KILOGRAM,
                 ),
             ),
@@ -405,14 +428,14 @@ def fixture_ecomax_i(ecomax_common: EcoMAX):
         yield ecomax_common
 
 
-@pytest.fixture()
+@pytest.fixture
 def ecomax_860p3_o(ecomax_p: EcoMAX):
     """Inject data for ecoMAX 860P3-O.
 
     (product_type: 0, product_id: 51)
     """
     product_type = ProductType.ECOMAX_P
-    product_model = ProductModel.ECOMAX_860P3_O
+    product_model = "ecoMAX 860P3-O"
 
     ecomax_p.data.update(
         {
@@ -425,66 +448,6 @@ def ecomax_860p3_o(ecomax_p: EcoMAX):
                 model=product_model,
             ),
             ATTR_REGDATA: load_regdata_fixture("regdata__ecomax_860p3_o.json"),
-        }
-    )
-
-    with patch(
-        "custom_components.plum_ecomax.connection.EcomaxConnection.model",
-        product_model,
-    ):
-        yield ecomax_p
-
-
-@pytest.fixture()
-def ecomax_860p6_o(ecomax_p: EcoMAX):
-    """Inject data for ecoMAX 860P6-O.
-
-    (product_type: 0, product_id: 51)
-    """
-    product_type = ProductType.ECOMAX_P
-    product_model = ProductModel.ECOMAX_860P6_O
-
-    ecomax_p.data.update(
-        {
-            ATTR_PRODUCT: ProductInfo(
-                type=product_type,
-                id=51,
-                uid="TEST",
-                logo=2,
-                image=51,
-                model=product_model,
-            ),
-            ATTR_REGDATA: load_regdata_fixture("regdata__ecomax_860p6_o.json"),
-        }
-    )
-
-    with patch(
-        "custom_components.plum_ecomax.connection.EcomaxConnection.model",
-        product_model,
-    ):
-        yield ecomax_p
-
-
-@pytest.fixture()
-def ecomax_860p3_s_lite(ecomax_p: EcoMAX):
-    """Inject data for ecoMAX 860P3-S Lite.
-
-    (product_type: 0, product_id: 51)
-    """
-    product_type = ProductType.ECOMAX_P
-    product_model = ProductModel.ECOMAX_860P3_S_LITE
-
-    ecomax_p.data.update(
-        {
-            ATTR_PRODUCT: ProductInfo(
-                type=product_type,
-                id=51,
-                uid="TEST",
-                logo=13056,
-                image=2816,
-                model=product_model,
-            ),
-            ATTR_REGDATA: load_regdata_fixture("regdata__ecomax_860p3_s_lite.json"),
         }
     )
 
@@ -688,7 +651,7 @@ def thermostats(ecomax_common: EcoMAX):
             values=ParameterValues(value=5, min_value=0, max_value=50),
             description=ThermostatNumberDescription(
                 "hysteresis",
-                multiplier=0.1,
+                step=0.1,
                 unit_of_measurement=UnitOfMeasurement.CELSIUS,
             ),
         ),
@@ -698,7 +661,7 @@ def thermostats(ecomax_common: EcoMAX):
             values=ParameterValues(value=100, min_value=100, max_value=350),
             description=ThermostatNumberDescription(
                 "party_target_temp",
-                multiplier=0.1,
+                step=0.1,
                 size=2,
                 unit_of_measurement=UnitOfMeasurement.DAYS,
             ),
@@ -709,7 +672,7 @@ def thermostats(ecomax_common: EcoMAX):
             values=ParameterValues(value=70, min_value=0, max_value=600),
             description=ThermostatNumberDescription(
                 "holidays_target_temp",
-                multiplier=0.1,
+                step=0.1,
                 size=2,
                 unit_of_measurement=UnitOfMeasurement.DAYS,
             ),
@@ -720,7 +683,7 @@ def thermostats(ecomax_common: EcoMAX):
             values=ParameterValues(value=90, min_value=50, max_value=300),
             description=ThermostatNumberDescription(
                 "antifreeze_target_temp",
-                multiplier=0.1,
+                step=0.1,
                 size=2,
                 unit_of_measurement=UnitOfMeasurement.CELSIUS,
             ),
@@ -731,7 +694,7 @@ def thermostats(ecomax_common: EcoMAX):
             values=ParameterValues(value=160, min_value=100, max_value=350),
             description=ThermostatNumberDescription(
                 "day_target_temp",
-                multiplier=0.1,
+                step=0.1,
                 size=2,
                 unit_of_measurement=UnitOfMeasurement.CELSIUS,
             ),
@@ -742,7 +705,7 @@ def thermostats(ecomax_common: EcoMAX):
             values=ParameterValues(value=100, min_value=100, max_value=200),
             description=ThermostatNumberDescription(
                 "night_target_temp",
-                multiplier=0.1,
+                step=0.1,
                 size=2,
                 unit_of_measurement=UnitOfMeasurement.CELSIUS,
             ),
@@ -767,3 +730,57 @@ def thermostats(ecomax_common: EcoMAX):
         ),
     ):
         yield ecomax_common
+
+
+@pytest.fixture
+def custom_fields(ecomax_common: EcoMAX):
+    """Inject custom fields."""
+
+    custom_fields = {
+        "custom_binary_sensor": False,
+        "custom_binary_sensor2": False,
+        "custom_sensor": 50.0,
+        "custom_number": EcomaxNumber(
+            device=ecomax_common,
+            values=ParameterValues(value=0, min_value=30, max_value=50),
+            description=EcomaxNumberDescription("custom_number"),
+        ),
+        "custom_switch": EcomaxSwitch(
+            device=ecomax_common,
+            values=ParameterValues(value=0, min_value=0, max_value=1),
+            description=EcomaxSwitchDescription("custom_switch"),
+        ),
+    }
+
+    ecomax_common.data.update(custom_fields)
+
+    mixers: dict[int, Mixer] = ecomax_common.data.get(ATTR_MIXERS, {})
+    for mixer in mixers.values():
+        mixer.data.update(custom_fields)
+
+    thermostats: dict[int, Thermostat] = ecomax_common.data.get(ATTR_THERMOSTATS, {})
+    for thermostat in thermostats.values():
+        thermostat.data.update(custom_fields)
+
+    regdata: dict[int, Any] = ecomax_common.data.get(ATTR_REGDATA, {})
+    if regdata:
+        regdata.update({9000: False, 9001: 50.0})
+
+    yield ecomax_common
+
+
+async def dispatch_value(
+    physical_device: PhysicalDevice,
+    name: str,
+    value: Any,
+    source_device: str = "ecomax",
+) -> None:
+    """Dispatch the value."""
+    if source_device == "ecomax":
+        await physical_device.dispatch(name, value)
+    else:
+        device_type, index = source_device.rsplit("_", 1)
+        vitual_devices = cast(
+            dict[int, VirtualDevice], physical_device.get_nowait(f"{device_type}s")
+        )
+        await vitual_devices[int(index)].dispatch(name, value)

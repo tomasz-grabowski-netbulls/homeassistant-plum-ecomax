@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Generator, Iterable
+from collections.abc import Callable
 from dataclasses import asdict, astuple, dataclass
+from functools import partial
 import logging
-from typing import Any, Final, cast, override
+from typing import Any, Final, cast
 
 from homeassistant.components.sensor import (
     RestoreSensor,
@@ -20,11 +21,12 @@ from homeassistant.const import (
     STATE_OFF,
     STATE_PAUSED,
     STATE_STANDBY,
+    Platform,
     UnitOfMass,
     UnitOfPower,
     UnitOfTemperature,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import (
@@ -33,24 +35,27 @@ from homeassistant.helpers.entity_platform import (
 )
 from homeassistant.helpers.typing import StateType
 from pyplumio.const import DeviceState, ProductType
-from pyplumio.filters import aggregate, on_change, throttle
+from pyplumio.filters import aggregate, deadband, on_change, throttle
 from pyplumio.structures.modules import ConnectedModules
 import voluptuous as vol
 
 from . import PlumEcomaxConfigEntry
 from .connection import EcomaxConnection
-from .const import (
-    ALL,
-    ATTR_BURNED_SINCE_LAST_UPDATE,
-    ATTR_NUMERIC_STATE,
-    ATTR_REGDATA,
-    ATTR_VALUE,
-    DEVICE_CLASS_METER,
-    FLOW_KGH,
-    ModuleType,
-    ProductModel,
+from .const import ATTR_VALUE, DeviceType, ModuleType
+from .entity import (
+    EcomaxEntity,
+    EcomaxEntityDescription,
+    MixerEntity,
+    RegdataEntity,
+    ThermostatEntity,
+    async_get_by_modules,
+    async_get_by_product_type,
+    async_get_custom_entities,
 )
-from .entity import DescriptorT, EcomaxEntity, EcomaxEntityDescription, MixerEntity
+
+ATTR_BURNED_SINCE_LAST_UPDATE: Final = "burned_since_last_update"
+ATTR_NUMERIC_STATE: Final = "numeric_state"
+
 
 SERVICE_RESET_METER: Final = "reset_meter"
 SERVICE_CALIBRATE_METER: Final = "calibrate_meter"
@@ -74,7 +79,11 @@ EM_TO_HA_STATE: dict[DeviceState, str] = {
     DeviceState.ALERT: STATE_ALERT,
 }
 
+DEVICE_CLASS_METER: Final = "plum_ecomax__meter"
+
 UPDATE_INTERVAL: Final = 10
+
+DEFAULT_TOLERANCE: Final = 0.1
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -90,7 +99,9 @@ SENSOR_TYPES: tuple[EcomaxSensorEntityDescription, ...] = (
     EcomaxSensorEntityDescription(
         key="heating_temp",
         device_class=SensorDeviceClass.TEMPERATURE,
-        filter_fn=lambda x: throttle(on_change(x), seconds=UPDATE_INTERVAL),
+        filter_fn=lambda x: throttle(
+            deadband(x, tolerance=DEFAULT_TOLERANCE), seconds=UPDATE_INTERVAL
+        ),
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
@@ -100,7 +111,9 @@ SENSOR_TYPES: tuple[EcomaxSensorEntityDescription, ...] = (
     EcomaxSensorEntityDescription(
         key="water_heater_temp",
         device_class=SensorDeviceClass.TEMPERATURE,
-        filter_fn=lambda x: throttle(on_change(x), seconds=UPDATE_INTERVAL),
+        filter_fn=lambda x: throttle(
+            deadband(x, tolerance=DEFAULT_TOLERANCE), seconds=UPDATE_INTERVAL
+        ),
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
@@ -110,7 +123,9 @@ SENSOR_TYPES: tuple[EcomaxSensorEntityDescription, ...] = (
     EcomaxSensorEntityDescription(
         key="outside_temp",
         device_class=SensorDeviceClass.TEMPERATURE,
-        filter_fn=lambda x: throttle(on_change(x), seconds=UPDATE_INTERVAL),
+        filter_fn=lambda x: throttle(
+            deadband(x, tolerance=DEFAULT_TOLERANCE), seconds=UPDATE_INTERVAL
+        ),
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
@@ -155,7 +170,9 @@ SENSOR_TYPES: tuple[EcomaxSensorEntityDescription, ...] = (
     ),
     EcomaxSensorEntityDescription(
         key="lambda_level",
-        filter_fn=lambda x: throttle(on_change(x), seconds=UPDATE_INTERVAL),
+        filter_fn=lambda x: throttle(
+            deadband(x, tolerance=DEFAULT_TOLERANCE), seconds=UPDATE_INTERVAL
+        ),
         module=ModuleType.ECOLAMBDA,
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -165,6 +182,9 @@ SENSOR_TYPES: tuple[EcomaxSensorEntityDescription, ...] = (
     ),
     EcomaxSensorEntityDescription(
         key="boiler_power",
+        filter_fn=lambda x: throttle(
+            deadband(x, tolerance=DEFAULT_TOLERANCE), seconds=UPDATE_INTERVAL
+        ),
         device_class=SensorDeviceClass.POWER,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
         product_types={ProductType.ECOMAX_P},
@@ -184,7 +204,9 @@ SENSOR_TYPES: tuple[EcomaxSensorEntityDescription, ...] = (
     ),
     EcomaxSensorEntityDescription(
         key="fuel_consumption",
-        native_unit_of_measurement=FLOW_KGH,
+        filter_fn=lambda x: throttle(
+            deadband(x, tolerance=0.001), seconds=UPDATE_INTERVAL
+        ),
         product_types={ProductType.ECOMAX_P},
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
@@ -193,6 +215,9 @@ SENSOR_TYPES: tuple[EcomaxSensorEntityDescription, ...] = (
     ),
     EcomaxSensorEntityDescription(
         key="boiler_load",
+        filter_fn=lambda x: throttle(
+            deadband(x, tolerance=DEFAULT_TOLERANCE), seconds=UPDATE_INTERVAL
+        ),
         native_unit_of_measurement=PERCENTAGE,
         product_types={ProductType.ECOMAX_P},
         state_class=SensorStateClass.MEASUREMENT,
@@ -201,6 +226,7 @@ SENSOR_TYPES: tuple[EcomaxSensorEntityDescription, ...] = (
     ),
     EcomaxSensorEntityDescription(
         key="fan_power",
+        filter_fn=lambda x: throttle(on_change(x), seconds=UPDATE_INTERVAL),
         native_unit_of_measurement=PERCENTAGE,
         product_types={ProductType.ECOMAX_P},
         state_class=SensorStateClass.MEASUREMENT,
@@ -210,7 +236,9 @@ SENSOR_TYPES: tuple[EcomaxSensorEntityDescription, ...] = (
     ),
     EcomaxSensorEntityDescription(
         key="optical_temp",
-        filter_fn=lambda x: throttle(on_change(x), seconds=UPDATE_INTERVAL),
+        filter_fn=lambda x: throttle(
+            deadband(x, tolerance=DEFAULT_TOLERANCE), seconds=UPDATE_INTERVAL
+        ),
         native_unit_of_measurement=PERCENTAGE,
         product_types={ProductType.ECOMAX_P},
         state_class=SensorStateClass.MEASUREMENT,
@@ -221,7 +249,9 @@ SENSOR_TYPES: tuple[EcomaxSensorEntityDescription, ...] = (
     EcomaxSensorEntityDescription(
         key="feeder_temp",
         device_class=SensorDeviceClass.TEMPERATURE,
-        filter_fn=lambda x: throttle(on_change(x), seconds=UPDATE_INTERVAL),
+        filter_fn=lambda x: throttle(
+            deadband(x, tolerance=DEFAULT_TOLERANCE), seconds=UPDATE_INTERVAL
+        ),
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         product_types={ProductType.ECOMAX_P},
         state_class=SensorStateClass.MEASUREMENT,
@@ -232,7 +262,9 @@ SENSOR_TYPES: tuple[EcomaxSensorEntityDescription, ...] = (
     EcomaxSensorEntityDescription(
         key="exhaust_temp",
         device_class=SensorDeviceClass.TEMPERATURE,
-        filter_fn=lambda x: throttle(on_change(x), seconds=UPDATE_INTERVAL),
+        filter_fn=lambda x: throttle(
+            deadband(x, tolerance=DEFAULT_TOLERANCE), seconds=UPDATE_INTERVAL
+        ),
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         product_types={ProductType.ECOMAX_P},
         state_class=SensorStateClass.MEASUREMENT,
@@ -243,7 +275,9 @@ SENSOR_TYPES: tuple[EcomaxSensorEntityDescription, ...] = (
     EcomaxSensorEntityDescription(
         key="return_temp",
         device_class=SensorDeviceClass.TEMPERATURE,
-        filter_fn=lambda x: throttle(on_change(x), seconds=UPDATE_INTERVAL),
+        filter_fn=lambda x: throttle(
+            deadband(x, tolerance=DEFAULT_TOLERANCE), seconds=UPDATE_INTERVAL
+        ),
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         product_types={ProductType.ECOMAX_P},
         state_class=SensorStateClass.MEASUREMENT,
@@ -254,7 +288,9 @@ SENSOR_TYPES: tuple[EcomaxSensorEntityDescription, ...] = (
     EcomaxSensorEntityDescription(
         key="lower_buffer_temp",
         device_class=SensorDeviceClass.TEMPERATURE,
-        filter_fn=lambda x: throttle(on_change(x), seconds=UPDATE_INTERVAL),
+        filter_fn=lambda x: throttle(
+            deadband(x, tolerance=DEFAULT_TOLERANCE), seconds=UPDATE_INTERVAL
+        ),
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         product_types={ProductType.ECOMAX_P},
         state_class=SensorStateClass.MEASUREMENT,
@@ -265,7 +301,9 @@ SENSOR_TYPES: tuple[EcomaxSensorEntityDescription, ...] = (
     EcomaxSensorEntityDescription(
         key="upper_buffer_temp",
         device_class=SensorDeviceClass.TEMPERATURE,
-        filter_fn=lambda x: throttle(on_change(x), seconds=UPDATE_INTERVAL),
+        filter_fn=lambda x: throttle(
+            deadband(x, tolerance=DEFAULT_TOLERANCE), seconds=UPDATE_INTERVAL
+        ),
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         product_types={ProductType.ECOMAX_P},
         state_class=SensorStateClass.MEASUREMENT,
@@ -276,7 +314,9 @@ SENSOR_TYPES: tuple[EcomaxSensorEntityDescription, ...] = (
     EcomaxSensorEntityDescription(
         key="lower_solar_temp",
         device_class=SensorDeviceClass.TEMPERATURE,
-        filter_fn=lambda x: throttle(on_change(x), seconds=UPDATE_INTERVAL),
+        filter_fn=lambda x: throttle(
+            deadband(x, tolerance=DEFAULT_TOLERANCE), seconds=UPDATE_INTERVAL
+        ),
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         product_types={ProductType.ECOMAX_I},
         state_class=SensorStateClass.MEASUREMENT,
@@ -287,7 +327,9 @@ SENSOR_TYPES: tuple[EcomaxSensorEntityDescription, ...] = (
     EcomaxSensorEntityDescription(
         key="upper_solar_temp",
         device_class=SensorDeviceClass.TEMPERATURE,
-        filter_fn=lambda x: throttle(on_change(x), seconds=UPDATE_INTERVAL),
+        filter_fn=lambda x: throttle(
+            deadband(x, tolerance=DEFAULT_TOLERANCE), seconds=UPDATE_INTERVAL
+        ),
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         product_types={ProductType.ECOMAX_I},
         state_class=SensorStateClass.MEASUREMENT,
@@ -298,7 +340,9 @@ SENSOR_TYPES: tuple[EcomaxSensorEntityDescription, ...] = (
     EcomaxSensorEntityDescription(
         key="fireplace_temp",
         device_class=SensorDeviceClass.TEMPERATURE,
-        filter_fn=lambda x: throttle(on_change(x), seconds=UPDATE_INTERVAL),
+        filter_fn=lambda x: throttle(
+            deadband(x, tolerance=DEFAULT_TOLERANCE), seconds=UPDATE_INTERVAL
+        ),
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         product_types={ProductType.ECOMAX_I},
         state_class=SensorStateClass.MEASUREMENT,
@@ -331,6 +375,35 @@ class EcomaxSensor(EcomaxEntity, SensorEntity):
         self.async_write_ha_state()
 
 
+@callback
+def async_setup_ecomax_sensors(connection: EcomaxConnection) -> list[EcomaxSensor]:
+    """Set up the ecoMAX sensors."""
+    return [
+        EcomaxSensor(connection, description)
+        for description in async_get_by_modules(
+            connection.device.modules,
+            async_get_by_product_type(connection.product_type, SENSOR_TYPES),
+        )
+    ]
+
+
+@callback
+def async_setup_custom_ecomax_sensors(
+    connection: EcomaxConnection, config_entry: PlumEcomaxConfigEntry
+) -> list[EcomaxSensor]:
+    """Set up the custom ecoMAX sensors."""
+    description_partial = partial(EcomaxSensorEntityDescription, value_fn=lambda x: x)
+    return [
+        EcomaxSensor(connection, description)
+        for description in async_get_custom_entities(
+            platform=Platform.SENSOR,
+            source_device=DeviceType.ECOMAX,
+            config_entry=config_entry,
+            description_factory=description_partial,
+        )
+    ]
+
+
 @dataclass(frozen=True, kw_only=True)
 class MixerSensorEntityDescription(EcomaxSensorEntityDescription):
     """Describes a mixer sensor."""
@@ -340,7 +413,9 @@ MIXER_SENSOR_TYPES: tuple[MixerSensorEntityDescription, ...] = (
     MixerSensorEntityDescription(
         key="current_temp",
         device_class=SensorDeviceClass.TEMPERATURE,
-        filter_fn=lambda x: throttle(on_change(x), seconds=UPDATE_INTERVAL),
+        filter_fn=lambda x: throttle(
+            deadband(x, tolerance=DEFAULT_TOLERANCE), seconds=UPDATE_INTERVAL
+        ),
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         product_types={ProductType.ECOMAX_P},
         state_class=SensorStateClass.MEASUREMENT,
@@ -362,7 +437,9 @@ MIXER_SENSOR_TYPES: tuple[MixerSensorEntityDescription, ...] = (
     MixerSensorEntityDescription(
         key="current_temp",
         device_class=SensorDeviceClass.TEMPERATURE,
-        filter_fn=lambda x: throttle(on_change(x), seconds=UPDATE_INTERVAL),
+        filter_fn=lambda x: throttle(
+            deadband(x, tolerance=DEFAULT_TOLERANCE), seconds=UPDATE_INTERVAL
+        ),
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         product_types={ProductType.ECOMAX_I},
         state_class=SensorStateClass.MEASUREMENT,
@@ -400,6 +477,36 @@ class MixerSensor(MixerEntity, EcomaxSensor):
         super().__init__(connection, description)
 
 
+@callback
+def async_setup_mixer_sensors(connection: EcomaxConnection) -> list[MixerSensor]:
+    """Set up the mixer sensors."""
+    return [
+        MixerSensor(connection, description, index)
+        for index in connection.device.mixers
+        for description in async_get_by_modules(
+            connection.device.modules,
+            async_get_by_product_type(connection.product_type, MIXER_SENSOR_TYPES),
+        )
+    ]
+
+
+@callback
+def async_setup_custom_mixer_sensors(
+    connection: EcomaxConnection, config_entry: PlumEcomaxConfigEntry
+) -> list[MixerSensor]:
+    """Set up the custom mixer sensors."""
+    description_partial = partial(MixerSensorEntityDescription, value_fn=lambda x: x)
+    return [
+        MixerSensor(connection, description, index)
+        for description, index in async_get_custom_entities(
+            platform=Platform.SENSOR,
+            source_device=DeviceType.MIXER,
+            config_entry=config_entry,
+            description_factory=description_partial,
+        )
+    ]
+
+
 @dataclass(frozen=True, kw_only=True)
 class EcomaxMeterEntityDescription(EcomaxSensorEntityDescription):
     """Describes an ecoMAX meter entity."""
@@ -409,7 +516,7 @@ METER_TYPES: tuple[EcomaxMeterEntityDescription, ...] = (
     EcomaxMeterEntityDescription(
         key="fuel_burned",
         always_available=True,
-        filter_fn=lambda x: aggregate(x, seconds=30),
+        filter_fn=lambda x: aggregate(x, seconds=30, sample_size=50),
         native_unit_of_measurement=UnitOfMass.KILOGRAMS,
         product_types={ProductType.ECOMAX_P},
         state_class=SensorStateClass.TOTAL_INCREASING,
@@ -427,17 +534,21 @@ class EcomaxMeter(EcomaxSensor, RestoreSensor):
     _unrecorded_attributes = frozenset({ATTR_BURNED_SINCE_LAST_UPDATE})
     entity_description: EcomaxMeterEntityDescription
 
-    @override
+    def __init__(
+        self, connection: EcomaxConnection, description: EcomaxMeterEntityDescription
+    ) -> None:
+        """Initialize a new meter."""
+        super().__init__(connection, description)
+        self._attr_native_value = 0.0
+
     async def async_added_to_hass(self) -> None:
         """Restore native value."""
         await super().async_added_to_hass()
         if (last_sensor_data := await self.async_get_last_sensor_data()) is not None:
-            self._attr_native_value = last_sensor_data.native_value
+            self._attr_native_value = cast(float, last_sensor_data.native_value)
             self._attr_native_unit_of_measurement = (
                 last_sensor_data.native_unit_of_measurement
             )
-        else:
-            self._attr_native_value = 0.0
 
     async def async_calibrate_meter(self, value: float) -> None:
         """Calibrate meter state."""
@@ -451,12 +562,13 @@ class EcomaxMeter(EcomaxSensor, RestoreSensor):
 
     async def async_update(self, value: float | None = None) -> None:
         """Update meter state."""
-        if value is not None and isinstance(self._attr_native_value, float):
+        if value is not None:
             self._attr_extra_state_attributes = {
                 ATTR_BURNED_SINCE_LAST_UPDATE: value * 1000
             }
-            self._attr_native_value += value
-            self.async_write_ha_state()
+            self._attr_native_value += value  # type: ignore[operator]
+
+        self.async_write_ha_state()
 
     @property
     def native_value(self) -> StateType:
@@ -464,81 +576,25 @@ class EcomaxMeter(EcomaxSensor, RestoreSensor):
         return cast(float, self.entity_description.value_fn(self._attr_native_value))
 
 
+@callback
+def async_setup_ecomax_meters(connection: EcomaxConnection) -> list[EcomaxMeter]:
+    """Set up the ecoMAX meters."""
+    return [
+        EcomaxMeter(connection, description)
+        for description in async_get_by_modules(
+            connection.device.modules,
+            async_get_by_product_type(connection.product_type, METER_TYPES),
+        )
+    ]
+
+
 @dataclass(frozen=True, kw_only=True)
 class RegdataSensorEntityDescription(EcomaxSensorEntityDescription):
     """Describes a regulator data sensor."""
 
-    product_models: set[ProductModel]
 
-
-STATE_CLOSING: Final = "closing"
-STATE_OPENING: Final = "opening"
-
-EM_TO_HA_MIXER_VALVE_STATE: dict[int, str] = {
-    0: STATE_OFF,
-    1: STATE_CLOSING,
-    2: STATE_OPENING,
-}
-
-REGDATA_SENSOR_TYPES: tuple[RegdataSensorEntityDescription, ...] = (
-    RegdataSensorEntityDescription(
-        key="227",
-        native_unit_of_measurement=PERCENTAGE,
-        product_models={ProductModel.ECOMAX_860P3_O},
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=0,
-        translation_key="ash_pan_full",
-        value_fn=lambda x: x,
-    ),
-    RegdataSensorEntityDescription(
-        key="215",
-        native_unit_of_measurement=PERCENTAGE,
-        product_models={ProductModel.ECOMAX_860P3_S_LITE},
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=0,
-        translation_key="ash_pan_full",
-        value_fn=lambda x: x,
-    ),
-    RegdataSensorEntityDescription(
-        key="223",
-        native_unit_of_measurement=PERCENTAGE,
-        product_models={ProductModel.ECOMAX_860P6_O},
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=0,
-        translation_key="ash_pan_full",
-        value_fn=lambda x: x,
-    ),
-    RegdataSensorEntityDescription(
-        key="134",
-        filter_fn=lambda x: throttle(on_change(x), seconds=UPDATE_INTERVAL),
-        native_unit_of_measurement=PERCENTAGE,
-        product_models={ProductModel.ECOMAX_860P6_O},
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=0,
-        translation_key="mixer_valve_opening_percentage",
-        value_fn=lambda x: x,
-    ),
-    RegdataSensorEntityDescription(
-        key="139",
-        device_class=SensorDeviceClass.ENUM,
-        product_models={ProductModel.ECOMAX_860P6_O},
-        translation_key="mixer_valve_state",
-        value_fn=lambda x: EM_TO_HA_MIXER_VALVE_STATE.get(x, STATE_UNKNOWN),
-    ),
-)
-
-
-class RegdataSensor(EcomaxSensor):
+class RegdataSensor(RegdataEntity, EcomaxSensor):
     """Represents a regulator data sensor."""
-
-    _regdata_key: int
-
-    def __init__(
-        self, connection: EcomaxConnection, description: EcomaxEntityDescription
-    ) -> None:
-        """Initialize a new regdata entity."""
-        self._regdata_key = int(description.key)
-        super().__init__(connection, description)
 
     async def async_update(self, regdata: dict[int, Any]) -> None:
         """Update entity state."""
@@ -547,111 +603,60 @@ class RegdataSensor(EcomaxSensor):
         )
         self.async_write_ha_state()
 
-    async def async_added_to_hass(self) -> None:
-        """Subscribe to regdata event."""
-        description = self.entity_description
-        handler = description.filter_fn(self.async_update)
 
-        async def async_set_available(regdata: dict[int, Any]) -> None:
-            """Mark entity as available."""
-            if self._regdata_key in regdata:
-                self._attr_available = True
-
-        if ATTR_REGDATA in self.device.data:
-            await async_set_available(self.device.data[ATTR_REGDATA])
-            await handler(self.device.data[ATTR_REGDATA])
-
-        self.device.subscribe_once(ATTR_REGDATA, async_set_available)
-        self.device.subscribe(ATTR_REGDATA, handler)
-
-    async def async_will_remove_from_hass(self) -> None:
-        """Unsubscribe from regdata event."""
-        self.device.unsubscribe(ATTR_REGDATA, self.async_update)
-
-    @property
-    def entity_registry_enabled_default(self) -> bool:
-        """Return if the entity should be enabled when first added.
-
-        This only applies when fist added to the entity registry.
-        """
-        return self._regdata_key in self.device.data.get(ATTR_REGDATA, {})
-
-
-def get_by_product_type(
-    product_type: ProductType, descriptions: Iterable[DescriptorT]
-) -> Generator[DescriptorT, None, None]:
-    """Get descriptions by the product type."""
-    for description in descriptions:
-        if (
-            description.product_types == ALL
-            or product_type in description.product_types
-        ):
-            yield description
-
-
-def get_by_modules(
-    connected_modules: ConnectedModules,
-    descriptions: Iterable[DescriptorT],
-) -> Generator[DescriptorT, None, None]:
-    """Get descriptions by connected modules."""
-    for description in descriptions:
-        if getattr(connected_modules, description.module, None) is not None:
-            yield description
-
-
-def get_by_product_model(
-    product_model: str, descriptions: Iterable[RegdataSensorEntityDescription]
-) -> Generator[RegdataSensorEntityDescription, None, None]:
-    """Get descriptions by the product model."""
-    for description in descriptions:
-        if product_model in description.product_models:
-            yield description
-
-
-def async_setup_ecomax_sensors(connection: EcomaxConnection) -> list[EcomaxSensor]:
-    """Set up the ecoMAX sensors."""
-    return [
-        EcomaxSensor(connection, description)
-        for description in get_by_modules(
-            connection.device.modules,
-            get_by_product_type(connection.product_type, SENSOR_TYPES),
-        )
-    ]
-
-
-def async_setup_ecomax_meters(connection: EcomaxConnection) -> list[EcomaxMeter]:
-    """Set up the ecoMAX meters."""
-    return [
-        EcomaxMeter(connection, description)
-        for description in get_by_modules(
-            connection.device.modules,
-            get_by_product_type(connection.product_type, METER_TYPES),
-        )
-    ]
-
-
-def async_setup_regdata_sensors(connection: EcomaxConnection) -> list[RegdataSensor]:
-    """Set up the regulator data sensors."""
+@callback
+def async_setup_custom_regdata_sensors(
+    connection: EcomaxConnection, config_entry: PlumEcomaxConfigEntry
+) -> list[RegdataSensor]:
+    """Set up the custom regulator data sensors."""
+    description_partial = partial(RegdataSensorEntityDescription, value_fn=lambda x: x)
     return [
         RegdataSensor(connection, description)
-        for description in get_by_modules(
-            connection.device.modules,
-            get_by_product_type(
-                connection.product_type,
-                get_by_product_model(connection.model, REGDATA_SENSOR_TYPES),
-            ),
+        for description in async_get_custom_entities(
+            platform=Platform.SENSOR,
+            source_device="regdata",
+            config_entry=config_entry,
+            description_factory=description_partial,
         )
     ]
 
 
-def async_setup_mixer_sensors(connection: EcomaxConnection) -> list[MixerSensor]:
-    """Set up the mixer sensors."""
+@dataclass(frozen=True, kw_only=True)
+class ThermostatSensorEntityDescription(EcomaxSensorEntityDescription):
+    """Describes a thermostat sensor."""
+
+
+class ThermostatSensor(ThermostatEntity, EcomaxSensor):
+    """Represents a thermostat sensor."""
+
+    entity_description: ThermostatSensorEntityDescription
+
+    def __init__(
+        self,
+        connection: EcomaxConnection,
+        description: ThermostatSensorEntityDescription,
+        index: int,
+    ):
+        """Initialize a new mixer sensor."""
+        self.index = index
+        super().__init__(connection, description)
+
+
+@callback
+def async_setup_custom_thermostat_sensors(
+    connection: EcomaxConnection, config_entry: PlumEcomaxConfigEntry
+) -> list[ThermostatSensor]:
+    """Set up the custom thermostat sensors."""
+    description_partial = partial(
+        ThermostatSensorEntityDescription, value_fn=lambda x: x
+    )
     return [
-        MixerSensor(connection, description, index)
-        for index in connection.device.mixers
-        for description in get_by_modules(
-            connection.device.modules,
-            get_by_product_type(connection.product_type, MIXER_SENSOR_TYPES),
+        ThermostatSensor(connection, description, index)
+        for description, index in async_get_custom_entities(
+            platform=Platform.SENSOR,
+            source_device=DeviceType.THERMOSTAT,
+            config_entry=config_entry,
+            description_factory=description_partial,
         )
     ]
 
@@ -667,16 +672,23 @@ async def async_setup_entry(
     connection = entry.runtime_data.connection
     entities = async_setup_ecomax_sensors(connection)
 
-    # Add regulator data (device-specific) sensors.
+    # Add custom ecoMAX sensors.
+    entities += async_setup_custom_ecomax_sensors(connection, entry)
+
+    # Add custom regulator data (device-specific) sensors.
     if (
-        regdata := async_setup_regdata_sensors(connection)
+        regdata_entities := async_setup_custom_regdata_sensors(connection, entry)
     ) and await connection.async_setup_regdata():
-        # Set up the regulator data sensors, if there are any.
-        entities += regdata
+        entities += regdata_entities
 
     # Add mixer/circuit sensors.
     if connection.has_mixers and await connection.async_setup_mixers():
         entities += async_setup_mixer_sensors(connection)
+        entities += async_setup_custom_mixer_sensors(connection, entry)
+
+    # Add thermostat sensors.
+    if connection.has_thermostats and await connection.async_setup_thermostats():
+        entities += async_setup_custom_thermostat_sensors(connection, entry)
 
     # Add ecoMAX meters.
     if meters := async_setup_ecomax_meters(connection):

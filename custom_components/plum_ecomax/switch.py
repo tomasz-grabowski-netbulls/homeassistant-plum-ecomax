@@ -2,29 +2,30 @@
 
 from __future__ import annotations
 
-from collections.abc import Generator, Iterable
 from dataclasses import dataclass, field
 import logging
-from typing import Any
+from typing import Any, cast
 
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
-from homeassistant.const import STATE_OFF, STATE_ON
-from homeassistant.core import HomeAssistant
+from homeassistant.const import STATE_OFF, STATE_ON, Platform
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from pyplumio.const import ProductType
-from pyplumio.helpers.parameter import Parameter, ParameterValue
-from pyplumio.structures.modules import ConnectedModules
+from pyplumio.const import ProductType, State
+from pyplumio.parameters import NumericType, Parameter
 
 from . import PlumEcomaxConfigEntry
 from .connection import EcomaxConnection
-from .const import ALL
+from .const import DeviceType
 from .entity import (
-    DescriptorT,
     EcomaxEntity,
     EcomaxEntityDescription,
     MixerEntity,
-    SubDescriptorT,
     SubdeviceEntityDescription,
+    ThermostatEntity,
+    async_get_by_index,
+    async_get_by_modules,
+    async_get_by_product_type,
+    async_get_custom_entities,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -34,9 +35,9 @@ _LOGGER = logging.getLogger(__name__)
 class EcomaxSwitchEntityDescription(EcomaxEntityDescription, SwitchEntityDescription):
     """Describes an ecoMAX switch."""
 
-    state_off: ParameterValue = STATE_OFF
-    state_on: ParameterValue = STATE_ON
-    extra_states: dict[ParameterValue, bool] = field(default_factory=dict)
+    state_off: State | NumericType = STATE_OFF
+    state_on: State | NumericType = STATE_ON
+    extra_states: dict[State | NumericType, bool] = field(default_factory=dict)
 
 
 SWITCH_TYPES: tuple[EcomaxSwitchEntityDescription, ...] = (
@@ -111,6 +112,34 @@ class EcomaxSwitch(EcomaxEntity, SwitchEntity):
         self.async_write_ha_state()
 
 
+@callback
+def async_setup_ecomax_switches(connection: EcomaxConnection) -> list[EcomaxSwitch]:
+    """Set up the ecoMAX switches."""
+    return [
+        EcomaxSwitch(connection, description)
+        for description in async_get_by_modules(
+            connection.device.modules,
+            async_get_by_product_type(connection.product_type, SWITCH_TYPES),
+        )
+    ]
+
+
+@callback
+def async_setup_custom_ecomax_switches(
+    connection: EcomaxConnection, config_entry: PlumEcomaxConfigEntry
+) -> list[EcomaxSwitch]:
+    """Set up the custom ecoMAX switches."""
+    return [
+        EcomaxSwitch(connection, description)
+        for description in async_get_custom_entities(
+            platform=Platform.SWITCH,
+            source_device=DeviceType.ECOMAX,
+            config_entry=config_entry,
+            description_factory=EcomaxSwitchEntityDescription,
+        )
+    ]
+
+
 @dataclass(frozen=True, kw_only=True)
 class MixerSwitchEntityDescription(
     EcomaxSwitchEntityDescription, SubdeviceEntityDescription
@@ -161,61 +190,73 @@ class MixerSwitch(MixerEntity, EcomaxSwitch):
         super().__init__(connection, description)
 
 
-def get_by_product_type(
-    product_type: ProductType,
-    descriptions: Iterable[DescriptorT],
-) -> Generator[DescriptorT, None, None]:
-    """Filter descriptions by the product type."""
-    for description in descriptions:
-        if (
-            description.product_types == ALL
-            or product_type in description.product_types
-        ):
-            yield description
-
-
-def get_by_modules(
-    connected_modules: ConnectedModules,
-    descriptions: Iterable[DescriptorT],
-) -> Generator[DescriptorT, None, None]:
-    """Filter descriptions by connected modules."""
-    for description in descriptions:
-        if getattr(connected_modules, description.module, None) is not None:
-            yield description
-
-
-def get_by_index(
-    index: int, descriptions: Iterable[SubDescriptorT]
-) -> Generator[SubDescriptorT, None, None]:
-    """Filter mixer/circuit descriptions by the index."""
-    index += 1
-    for description in descriptions:
-        if description.indexes == ALL or index in description.indexes:
-            yield description
-
-
-def async_setup_ecomax_switches(connection: EcomaxConnection) -> list[EcomaxSwitch]:
-    """Set up the ecoMAX switches."""
-    return [
-        EcomaxSwitch(connection, description)
-        for description in get_by_modules(
-            connection.device.modules,
-            get_by_product_type(connection.product_type, SWITCH_TYPES),
-        )
-    ]
-
-
+@callback
 def async_setup_mixer_switches(connection: EcomaxConnection) -> list[MixerSwitch]:
     """Set up the mixers switches."""
     return [
         MixerSwitch(connection, description, index)
-        for index in connection.device.mixers
-        for description in get_by_index(
+        for index in cast(dict[int, Any], connection.device.mixers)
+        for description in async_get_by_index(
             index,
-            get_by_modules(
+            async_get_by_modules(
                 connection.device.modules,
-                get_by_product_type(connection.product_type, MIXER_SWITCH_TYPES),
+                async_get_by_product_type(connection.product_type, MIXER_SWITCH_TYPES),
             ),
+        )
+    ]
+
+
+@callback
+def async_setup_custom_mixer_switches(
+    connection: EcomaxConnection, config_entry: PlumEcomaxConfigEntry
+) -> list[MixerSwitch]:
+    """Set up the custom mixer switches."""
+    return [
+        MixerSwitch(connection, description, index)
+        for description, index in async_get_custom_entities(
+            platform=Platform.SWITCH,
+            source_device=DeviceType.MIXER,
+            config_entry=config_entry,
+            description_factory=MixerSwitchEntityDescription,
+        )
+    ]
+
+
+@dataclass(frozen=True, kw_only=True)
+class ThermostatSwitchEntityDescription(
+    EcomaxSwitchEntityDescription, SubdeviceEntityDescription
+):
+    """Describes a thermostat switch entity."""
+
+
+class ThermostatSwitch(ThermostatEntity, EcomaxSwitch):
+    """Represents a thermostat switch."""
+
+    entity_description: ThermostatSwitchEntityDescription
+
+    def __init__(
+        self,
+        connection: EcomaxConnection,
+        description: ThermostatSwitchEntityDescription,
+        index: int,
+    ):
+        """Initialize a new thermostat switch."""
+        self.index = index
+        super().__init__(connection, description)
+
+
+@callback
+def async_setup_custom_thermostat_switches(
+    connection: EcomaxConnection, config_entry: PlumEcomaxConfigEntry
+) -> list[ThermostatSwitch]:
+    """Set up the custom thermostat switches."""
+    return [
+        ThermostatSwitch(connection, description, index)
+        for description, index in async_get_custom_entities(
+            platform=Platform.SWITCH,
+            source_device=DeviceType.THERMOSTAT,
+            config_entry=config_entry,
+            description_factory=ThermostatSwitchEntityDescription,
         )
     ]
 
@@ -231,9 +272,17 @@ async def async_setup_entry(
     connection = entry.runtime_data.connection
     entities = async_setup_ecomax_switches(connection)
 
+    # Add custom ecoMAX switches.
+    entities += async_setup_custom_ecomax_switches(connection, entry)
+
     # Add mixer/circuit switches.
     if connection.has_mixers and await connection.async_setup_mixers():
         entities += async_setup_mixer_switches(connection)
+        entities += async_setup_custom_mixer_switches(connection, entry)
+
+    # Add thermostat switches.
+    if connection.has_thermostats and await connection.async_setup_thermostats():
+        entities += async_setup_custom_thermostat_switches(connection, entry)
 
     async_add_entities(entities)
     return True

@@ -1,8 +1,14 @@
+---
 name: ci
+permissions:
+  contents: read
+  pull-requests: read
 
 on:
-  - push
-  - pull_request
+  push:
+    branches:
+      - main
+  pull_request:
 
 jobs:
   test:
@@ -14,8 +20,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-          cache: 'pip'
+          python-version: "3.13"
+          cache: "pip"
 
       - name: Install dependencies
         run: |
@@ -25,9 +31,13 @@ jobs:
       - name: Test with tox
         run: tox
 
-      - if: github.event_name != 'pull_request'
-        uses: paambaati/codeclimate-action@v5.0.0
-        env:
-          CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
+      - if: github.event_name == 'push'
+        name: Generate coverage report
+        run: |
+          coverage lcov
+
+      - if: github.event_name == 'push'
+        uses: qltysh/qlty-action/coverage@v1
         with:
-          coverageCommand: coverage xml
+          token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
+          files: coverage.lcov
